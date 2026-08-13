@@ -1,0 +1,595 @@
+// ============================================================
+// Fitnes Claude — Fitness Studio CRM
+// Prisma Schema
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── ENUMS ───────────────────────────────────────────────────
+
+enum UserRole {
+  SUPERADMIN   // Владелец — полный доступ
+  ADMIN        // Администратор — касса, расписание, клиенты
+  TRAINER      // Тренер — только своё расписание и посещаемость
+  PHOTOGRAPHER // Фотограф — просмотр и изменение записей, доступ к разделу клиенты отсутствует
+}
+
+enum LoyaltyTag {
+  NEW       // Новый — первая запись в системе
+  REGULAR   // Постоянный — 3+ визитов за 45 дней
+  LOST      // Потерянный — 30+ дней без визита при наличии абонемента
+}
+
+enum BookingStatus {
+  UNCONFIRMED // Не подтвержден (ожидает предоплаты)
+  CONFIRMED   // Подтвержден
+  ATTENDED    // Пришел
+  ABSENT      // Не пришел
+  CANCELLED   // Отмена записи
+}
+
+
+enum CertificateType {
+  NOMINAL    // Номинальный — фиксированная сумма на депозит
+  PACKAGE    // Пакетный — конкретный абонемент
+}
+
+enum CertificateStatus {
+  SOLD       // Продан
+  ACTIVATED  // Активирован
+  EXPIRED    // Истек
+}
+
+enum TrainerPayType {
+  NONE       // Не начислять зарплату
+  FIXED      // Фиксированная ставка за факт проведения
+  PER_CLIENT // Подушная — за каждого пришедшего клиента
+  HYBRID     // Фиксированная + бонус за каждого клиента
+}
+
+enum CashTransactionType {
+  INCOME  // Приход
+  EXPENSE // Расход
+}
+
+enum CashTransactionCategory {
+  // Доходы
+  SUBSCRIPTION_SALE  // Продажа абонемента
+  CERTIFICATE_SALE   // Продажа сертификата
+  DEPOSIT_TOPUP      // Пополнение депозита
+  OTHER_INCOME       // Прочий доход
+
+  // Расходы
+  TRAINER_SALARY     // Зарплата тренера
+  HOUSEHOLD          // Хозрасходы
+  CLIENT_REFUND      // Возврат клиенту
+  OTHER_EXPENSE      // Прочий расход
+}
+
+enum PaymentMethod {
+  CASH     // Наличные
+  CARD     // Карта/QR
+  DEPOSIT  // Списание с депозита клиента
+  MIXED    // Депозит + наличные/карта
+}
+
+enum LeadStatus {
+  NEW           // Новое обращение
+  QUALIFYING    // Квалификация / Переписка
+  TRIAL_BOOKED  // Записан на пробное
+  TRIAL_DONE    // Посетил пробное
+  WON           // Купил абонемент
+  LOST          // Сделка проиграна
+}
+
+enum LeadSource {
+  INSTAGRAM   // Instagram Direct
+  WHATSAPP    // WhatsApp
+  MANUAL      // Ручное создание
+  WIDGET      // Онлайн-запись
+}
+
+enum WhatsAppMessageStatus {
+  QUEUED    // В очереди
+  SENT      // Отправлено
+  ERROR     // Ошибка доставки
+}
+
+// ─── ПОЛЬЗОВАТЕЛИ СИСТЕМЫ ────────────────────────────────────
+
+model User {
+  id           String   @id @default(cuid())
+  role         UserRole @default(ADMIN)
+  firstName    String
+  lastName     String
+  phone        String?
+  email        String?  @unique
+  passwordHash String?
+  avatarUrl    String?
+  isActive     Boolean  @default(true)
+
+  // Если пользователь — тренер, связь с тренером
+  trainer Trainer?
+
+  // Аудит-логи, созданные этим пользователем
+  auditLogs     AuditLog[]
+  cashShifts    CashShift[]
+  cashTransactions CashTransaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}
+
+// ─── СПРАВОЧНИКИ ─────────────────────────────────────────────
+
+model Hall {
+  id         String  @id @default(cuid())
+  name       String
+  description String?
+  colorHex   String  @default("#3B82F6") // Цветовой маркер для сетки
+  isActive       Boolean @default(true)
+  showInSchedule Boolean @default(true)
+  sortOrder      Int     @default(0)
+  openTime       String  @default("09:00")
+  closeTime      String  @default("21:00")
+
+  classEvents ClassEvent[]
+  subscriptionPlans SubscriptionPlan[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("halls")
+}
+
+model TrainingDirection {
+  id          String  @id @default(cuid())
+  name        String  // Йога, Пилатес, Растяжка, TRX, ...
+  description String?
+  colorHex    String  @default("#8B5CF6")
+  icon        String? @default("Sparkles")
+  sortOrder   Int     @default(0)
+  isActive    Boolean @default(true)
+
+  classEvents ClassEvent[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("training_directions")
+}
+
+model Trainer {
+  id          String  @id @default(cuid())
+  userId      String  @unique
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio         String?
+  specializations String[] // Направления (свободный массив строк)
+
+  payType     TrainerPayType @default(FIXED)
+  fixedRate   Decimal        @db.Decimal(10, 2) @default(0) // Ставка за факт
+  perClientRate Decimal      @db.Decimal(10, 2) @default(0) // За каждого клиента
+  percentRate Decimal        @db.Decimal(5, 2)  @default(50) // Процент со съёмки
+
+  classEvents  ClassEvent[]
+  earnings     TrainerEarning[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("trainers")
+}
+
+// ─── КЛИЕНТЫ ─────────────────────────────────────────────────
+
+model Client {
+  id          String      @id @default(cuid())
+  firstName   String
+  lastName    String
+  phone       String
+  email       String?
+  birthDate   DateTime?
+  photoUrl          String?
+  instagramUsername String?
+  note              String?
+  loyaltyTag        LoyaltyTag  @default(NEW)
+
+  // Уведомления
+  notifyAll        Boolean @default(true)
+  notifyReminders  Boolean @default(true)
+  notifyMarketing  Boolean @default(true)
+
+  // Депозит, продано и визиты
+  depositBalance Decimal @db.Decimal(10, 2) @default(0)
+  totalSales     Decimal @db.Decimal(10, 2) @default(0)
+  firstVisit     DateTime?
+  lastVisit      DateTime?
+
+  // Связи
+  bookings      Booking[]
+  certificates  Certificate[]
+  auditLogs     AuditLog[]
+  documents     ClientDocument[]
+  leads         Lead[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([phone])
+  @@index([lastName])
+  @@index([loyaltyTag])
+  @@map("clients")
+}
+
+// ─── РАСПИСАНИЕ ──────────────────────────────────────────────
+
+model ClassEvent {
+  id          String   @id @default(cuid())
+  startAt     DateTime
+  durationMin Int      @default(60) // Продолжительность в минутах
+
+  directionId String
+  direction   TrainingDirection @relation(fields: [directionId], references: [id])
+
+  trainerId   String?
+  trainer     Trainer? @relation(fields: [trainerId], references: [id])
+
+  hallId      String
+  hall        Hall    @relation(fields: [hallId], references: [id])
+
+  note        String?
+  servicePrice   Decimal @db.Decimal(10, 2) @default(0) // Стоимость услуги
+  extraPeopleFee Decimal @db.Decimal(10, 2) @default(0) // Доплата за количество человек
+  wardrobeFee    Decimal @db.Decimal(10, 2) @default(0) // Аренда гардероба (не входит в процент)
+  prepayment     Decimal @db.Decimal(10, 2) @default(0) // Предоплата (по умолчанию 0 ₸)
+  totalPrice     Decimal @db.Decimal(10, 2) @default(0) // Итого общая стоимость съёмки
+  isCompleted Boolean @default(false)
+
+  bookings    Booking[]
+  earnings    TrainerEarning[]
+  auditLogs   AuditLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([startAt])
+  @@index([trainerId])
+  @@index([hallId])
+  @@map("class_events")
+}
+
+model Booking {
+  id           String        @id @default(cuid())
+  clientId     String
+  client       Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  classEventId String
+  classEvent   ClassEvent    @relation(fields: [classEventId], references: [id], onDelete: Cascade)
+  status       BookingStatus @default(CONFIRMED)
+  note         String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([clientId, classEventId])
+  @@index([classEventId])
+  @@index([clientId])
+  @@map("bookings")
+}
+
+// ─── АБОНЕМЕНТЫ ──────────────────────────────────────────────
+
+// ─── УСЛУГИ ──────────────────────────────────────────────────
+
+model SubscriptionPlan {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  imageUrl      String?
+  category      String?
+  durationMin   Int      @default(60)
+  peopleCount   Int      @default(1)
+  halls         Hall[]
+  price         Decimal  @db.Decimal(10, 2)
+  isPriceRange  Boolean  @default(false)
+  priceTo       Decimal? @db.Decimal(10, 2)
+  priceTiers    Json?
+  isPerPerson   Boolean  @default(false)
+  sortOrder     Int      @default(0)
+  isActive      Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("subscription_plans")
+}
+
+
+// ─── СЕРТИФИКАТЫ ─────────────────────────────────────────────
+
+model Certificate {
+  id          String            @id @default(cuid())
+  code        String            @unique // Уникальный номер/штрихкод
+  type        CertificateType
+  status      CertificateStatus @default(SOLD)
+
+  // Номинальный — сумма для зачисления на депозит
+  nominalAmount Decimal? @db.Decimal(10, 2)
+
+  // Пакетный — ссылка на план абонемента
+  planId String?
+  peopleCount Int?
+
+  // Покупатель, получатель и кастомизация (от кого / для кого)
+  buyerName     String?
+  buyerPhone    String?
+  recipientText String? // Кастомизация: "Любимой маме от Екатерины" и т.п.
+
+  // Активация — привязка к клиенту
+  clientId     String?
+  client       Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  activatedAt  DateTime?
+  expiresAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("certificates")
+}
+
+// ─── КАССА ───────────────────────────────────────────────────
+
+model CashShift {
+  id            String   @id @default(cuid())
+  openedAt      DateTime @default(now())
+  closedAt      DateTime?
+  openingBalance Decimal @db.Decimal(10, 2) @default(0) // Фактический остаток при открытии
+  closingBalance Decimal? @db.Decimal(10, 2)             // Фактический остаток при закрытии
+  systemBalance  Decimal? @db.Decimal(10, 2)             // Расчётный остаток системы
+  difference     Decimal? @db.Decimal(10, 2)             // Расхождение
+  note           String?
+
+  openedById String
+  openedBy   User   @relation(fields: [openedById], references: [id])
+
+  transactions CashTransaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("cash_shifts")
+}
+
+model CashTransaction {
+  id           String                  @id @default(cuid())
+  shiftId      String
+  shift        CashShift               @relation(fields: [shiftId], references: [id])
+  type         CashTransactionType
+  category     CashTransactionCategory
+  paymentMethod PaymentMethod          @default(CASH)
+  amount       Decimal                 @db.Decimal(10, 2)
+  description  String?
+  date         DateTime                @default(now())
+
+  // Привязки к сущностям
+  clientId       String?
+  subscriptionId String?
+  certificateId  String?
+  trainerId      String?
+
+  createdById  String
+  createdBy    User   @relation(fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([shiftId])
+  @@index([date])
+  @@index([clientId])
+  @@map("cash_transactions")
+}
+
+// ─── ЗАРПЛАТА ТРЕНЕРОВ ────────────────────────────────────────
+
+model TrainerEarning {
+  id           String     @id @default(cuid())
+  trainerId    String
+  trainer      Trainer    @relation(fields: [trainerId], references: [id])
+  classEventId String
+  classEvent   ClassEvent @relation(fields: [classEventId], references: [id])
+
+  attendedCount Int     // Количество пришедших клиентов
+  fixedAmount   Decimal @db.Decimal(10, 2) // Начислено фиксировано
+  bonusAmount   Decimal @db.Decimal(10, 2) // Начислено бонус
+  totalAmount   Decimal @db.Decimal(10, 2) // Итого
+
+  paidAmount    Decimal  @db.Decimal(10, 2) @default(0)
+  paidAt        DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([trainerId, classEventId])
+  @@map("trainer_earnings")
+}
+
+// ─── CRM / ВОРОНКА ПРОДАЖ ─────────────────────────────────────
+
+model Lead {
+  id          String     @id @default(cuid())
+  status      String     @default("NEW")
+  source      LeadSource @default(MANUAL)
+  name        String?
+  phone       String?
+  externalId  String?    // ID чата в Instagram/WhatsApp
+  note        String?
+
+  // После конвертации
+  clientId    String?
+  client      Client?    @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  auditLogs AuditLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([phone])
+  @@map("leads")
+}
+
+// ─── WHATSAPP ОЧЕРЕДЬ ─────────────────────────────────────────
+
+model WhatsAppMessage {
+  id          String                @id @default(cuid())
+  phone       String
+  body        String
+  status      WhatsAppMessageStatus @default(QUEUED)
+  errorText   String?
+  scheduledAt DateTime              @default(now())
+  sentAt      DateTime?
+
+  // Привязка к клиенту (необязательно)
+  clientId    String?
+
+  // Для дедупликации автоматических уведомлений
+  templateId  String?  // "reminder", "birthday", "booking_confirm", etc.
+  refId       String?  // bookingId, "bday-YYYY" и т.п.
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([scheduledAt])
+  @@index([templateId, refId])
+  @@map("whatsapp_messages")
+}
+
+// ─── ДОКУМЕНТЫ КЛИЕНТОВ ───────────────────────────────────────
+
+model ClientDocument {
+  id           String  @id @default(cuid())
+  clientId     String
+  client       Client  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  filename     String
+  originalName String
+  url          String
+  mimeType     String
+  size         Int
+
+  createdAt DateTime @default(now())
+
+  @@map("client_documents")
+}
+
+// ─── ДОГОВОРНЫЕ ШАБЛОНЫ ───────────────────────────────────────
+
+model ContractTemplate {
+  id        String  @id @default(cuid())
+  name      String
+  body      String  // HTML/текст с тегами {ФИО_Клиента}, {Телефон_Клиента}, {Дата_Подписания}
+  isActive  Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("contract_templates")
+}
+
+// ─── АУДИТ-ЛОГ ───────────────────────────────────────────────
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String   // "Изменил статус на 'Пришел'", "Удалил абонемент", ...
+  createdAt DateTime @default(now())
+
+  // Кто совершил действие
+  userId    String?
+  user      User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // К чему относится (только одно из полей заполнено)
+  clientId     String?
+  client       Client?     @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  classEventId String?
+  classEvent   ClassEvent? @relation(fields: [classEventId], references: [id], onDelete: Cascade)
+  leadId       String?
+  lead         Lead?       @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@index([classEventId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ─── WHATSAPP СЕССИЯ ──────────────────────────────────────────
+
+model WhatsAppSession {
+  id           String   @id @default("singleton")
+  isOnline     Boolean  @default(false)
+  provider     String   @default("EVOLUTION")
+  serverUrl    String?  // URL сервера Evolution API (например http://57.128.223.180:8080)
+  instanceName String?  // Имя инстанса Evolution API (например fotoidea)
+  apiKey       String?  // API Key Evolution API
+  gatewayId    String?  // ID инстанса Green-API / Whapi (legacy)
+  apiToken     String?  // Token Green-API (legacy)
+  updatedAt    DateTime @updatedAt
+
+  @@map("whatsapp_session")
+}
+
+
+
+// ─── УВЕДОМЛЕНИЯ (ШАБЛОНЫ) ────────────────────────────────────
+
+model NotificationTemplate {
+  id        String  @id
+  name      String  // "booking_confirm", "reminder", "subscription_bought", "subscription_low"
+  body      String  // Текст с переменными {{client_name}}, {{class_date}}, ...
+  isActive  Boolean @default(true)
+
+  updatedAt DateTime @updatedAt
+
+  @@map("notification_templates")
+}
+
+// ─── ПРОМОКОДЫ ───────────────────────────────────────────────
+
+enum PromoType {
+  FIXED   // Фиксированная скидка в ₸
+  PERCENT // Процентная скидка %
+}
+
+model PromoCode {
+  id        String    @id @default(cuid())
+  code      String    @unique
+  type      PromoType
+  value     Decimal   @db.Decimal(10, 2) // сумма ₸ или процент 1-100
+  maxUses   Int?      // null = неограниченно
+  usedCount Int       @default(0)
+  expiresAt DateTime?
+  isActive  Boolean   @default(true)
+  note      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("promo_codes")
+}
+
+// ─── НАСТРОЙКИ ───────────────────────────────────────────────
+
+model Setting {
+  key   String @id
+  value String
+
+  @@map("settings")
+}

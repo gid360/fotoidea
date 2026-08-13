@@ -1,0 +1,83 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  font-size: 115%;
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 154 38% 8%;
+    --card: 0 0% 100%;
+    --card-foreground: 154 38% 8%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 154 38% 8%;
+    --primary: 152 62% 32%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 148 25% 94%;
+    --secondary-foreground: 154 42% 14%;
+    --muted: 148 14% 96%;
+    --muted-foreground: 150 8% 46%;
+    --accent: 148 22% 92%;
+    --accent-foreground: 154 42% 14%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 148 18% 88%;
+    --input: 148 18% 88%;
+    --ring: 152 62% 32%;
+    --radius: 0.5rem;
+    --sidebar-background: 154 59% 9%;
+    --sidebar-foreground: 150 24% 84%;
+    --sidebar-primary: 148 54% 58%;
+    --sidebar-primary-foreground: 154 59% 9%;
+    --sidebar-accent: 154 50% 14%;
+    --sidebar-accent-foreground: 150 28% 90%;
+    --sidebar-border: 154 44% 15%;
+    --sidebar-ring: 148 54% 58%;
+  }
+
+  .dark {
+    --background: 154 40% 5%;
+    --foreground: 148 18% 92%;
+    --card: 154 35% 7%;
+    --card-foreground: 148 18% 92%;
+    --popover: 154 35% 7%;
+    --popover-foreground: 148 18% 92%;
+    --primary: 148 52% 46%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 154 30% 14%;
+    --secondary-foreground: 148 18% 92%;
+    --muted: 154 30% 14%;
+    --muted-foreground: 150 12% 60%;
+    --accent: 154 30% 14%;
+    --accent-foreground: 148 18% 92%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 154 28% 16%;
+    --input: 154 28% 16%;
+    --ring: 148 52% 46%;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { @apply bg-muted; }
+::-webkit-scrollbar-thumb { @apply bg-muted-foreground/30 rounded-full; }
+::-webkit-scrollbar-thumb:hover { @apply bg-muted-foreground/50; }
+
+@media screen { .print-only { display: none !important; } }
+@media print {
+  nav, aside, [data-sidebar], .print-hide { display: none !important; }
+  body { font-size: 11pt; }
+  .sticky { position: static !important; }
+  @page { margin: 1.5cm; size: A4; }
+}
