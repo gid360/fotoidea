@@ -37,6 +37,8 @@ services:
       - NODE_ENV=production
       - NEXT_TELEMETRY_DISABLED=1
       - PORT=3000
+    volumes:
+      - ./public/uploads:/app/public/uploads
     networks:
       - crm-net
       - evolution-net

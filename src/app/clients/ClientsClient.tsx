@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Search, Plus, Users, Download, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Search, Plus, Users, Download, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowUpDown, ArrowUp, ArrowDown, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn, formatMoney, formatDate } from "@/lib/utils";
@@ -88,7 +88,7 @@ export function ClientsClient() {
     setPage(1);
   };
 
-  const { data, refetch, isLoading } = useQuery<ClientsResponse>({
+  const { data, refetch, isLoading, isFetching } = useQuery<ClientsResponse>({
     queryKey: ["clients", search, tagFilter, page, limit, sortBy, sortOrder],
     queryFn: () => {
       const params = new URLSearchParams();
@@ -100,6 +100,7 @@ export function ClientsClient() {
       params.set("sortOrder", sortOrder);
       return fetch(`/api/clients?${params}`).then(r => r.json());
     },
+    placeholderData: (previousData) => previousData,
   });
 
   const clients = data?.clients || [];
@@ -164,10 +165,13 @@ export function ClientsClient() {
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Поиск по имени, телефону..."
-              className="pl-9"
+              className="pl-9 pr-9"
               value={search}
               onChange={e => handleSearchChange(e.target.value)}
             />
+            {isFetching && (
+              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-primary" />
+            )}
           </div>
           <div className="flex items-center gap-2">
             <select
@@ -210,15 +214,20 @@ export function ClientsClient() {
       </div>
 
       {/* Список */}
-      <div className="flex-1 overflow-auto">
-        {clients.length === 0 ? (
+      <div className="flex-1 overflow-auto relative">
+        {isLoading || (isFetching && !data) ? (
+          <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
+            <Loader2 className="h-10 w-10 animate-spin text-primary mb-3" />
+            <p className="font-medium text-sm">Загрузка клиентов...</p>
+          </div>
+        ) : clients.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
             <Users className="h-12 w-12 mb-3 opacity-30" />
-            <p>Клиенты не найдены</p>
+            <p className="font-medium">Клиенты не найдены</p>
             {search && <p className="text-sm mt-1">Попробуйте изменить запрос</p>}
           </div>
         ) : (
-          <>
+          <div className={cn("transition-opacity duration-150", isFetching && "opacity-50 pointer-events-none")}>
             {/* Мобильные карточки */}
             <div className="md:hidden divide-y">
               {clients.map(client => {
@@ -262,14 +271,16 @@ export function ClientsClient() {
                 <tr className="text-xs uppercase tracking-wide">
                   {renderSortHeader("Клиент", "name", "left")}
                   {renderSortHeader("Телефон", "phone", "left")}
+                  {renderSortHeader("Статус", "status", "left")}
                   {renderSortHeader("Продано", "totalSales", "right")}
-                  {renderSortHeader("Количество посещений", "visits", "right")}
-                  {renderSortHeader("Последний визит", "lastVisit", "right")}
+                  {renderSortHeader("Визиты", "visits", "right")}
+                  {renderSortHeader("Посл. визит", "lastVisit", "right")}
                   {renderSortHeader("Первый визит", "firstVisit", "right")}
                 </tr>
               </thead>
-              <tbody className="divide-y">
+              <tbody className="divide-y text-sm">
                 {clients.map(client => {
+                  const tag = LOYALTY_CONFIG[client.loyaltyTag];
                   return (
                     <tr
                       key={client.id}
@@ -291,11 +302,16 @@ export function ClientsClient() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm">{client.phone}</td>
-                      <td className="px-4 py-3 text-right text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                      <td className="px-4 py-3 text-sm text-muted-foreground">{client.phone}</td>
+                      <td className="px-4 py-3">
+                        <span className={cn("inline-flex px-2 py-0.5 rounded-full text-xs font-medium", tag?.className)}>
+                          {tag?.label || client.loyaltyTag}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right font-semibold text-emerald-600 dark:text-emerald-400">
                         {formatMoney(client.totalSales || 0)} ₸
                       </td>
-                      <td className="px-4 py-3 text-right text-sm text-muted-foreground">{client._count.bookings}</td>
+                      <td className="px-4 py-3 text-right text-muted-foreground">{client._count.bookings}</td>
                       <td className="px-4 py-3 text-right text-xs text-muted-foreground">
                         {client.lastVisit ? formatDate(client.lastVisit) : "—"}
                       </td>
@@ -307,7 +323,7 @@ export function ClientsClient() {
                 })}
               </tbody>
             </table>
-          </>
+          </div>
         )}
       </div>
 
