@@ -95,8 +95,17 @@ export function ConversationsClient() {
   // Fetch conversations list
   const { data: conversations = [], isLoading: loading, refetch: refetchConversations } = useQuery<ConversationListItemDto[]>({
     queryKey: ["conversations-list"],
-    queryFn: () => fetch("/api/conversations").then((r) => r.json()).catch(() => []),
-    refetchInterval: 12000,
+    queryFn: async () => {
+      const res = await fetch("/api/conversations");
+      if (!res.ok) throw new Error("Failed to fetch conversations");
+      const data = await res.json();
+      if (!Array.isArray(data)) throw new Error("Invalid response format");
+      return data;
+    },
+    placeholderData: (previousData) => previousData,
+    staleTime: 5000,
+    refetchInterval: 8000,
+    retry: 2,
   });
 
   // Highlight chats for 1.5 seconds when new incoming messages arrive
