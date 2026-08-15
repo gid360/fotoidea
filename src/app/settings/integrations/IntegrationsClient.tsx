@@ -36,9 +36,12 @@ export function IntegrationsClient() {
     queryFn: () => fetch("/api/settings").then((r) => r.json()),
   });
 
+  const [instaUsername, setInstaUsername] = useState("");
   const [instaAccountId, setInstaAccountId] = useState("");
   const [instaPageToken, setInstaPageToken] = useState("");
+  const [instaAvatarUrl, setInstaAvatarUrl] = useState("");
   const [savingInsta, setSavingInsta] = useState(false);
+  const [instaModalOpen, setInstaModalOpen] = useState(false);
   const [copiedWebhook, setCopiedWebhook] = useState(false);
 
   // Altegio settings state
@@ -60,8 +63,10 @@ export function IntegrationsClient() {
 
   useEffect(() => {
     if (settings) {
-      setInstaAccountId(settings.instagramAccountId || "");
+      setInstaUsername(settings.instagramUsername || "maqta_qyz07");
+      setInstaAccountId(settings.instagramAccountId || "17841441579820989");
       setInstaPageToken(settings.instagramPageToken || "");
+      setInstaAvatarUrl(settings.instagramAvatarUrl || "");
       setAltegioCompanyId(settings.altegioCompanyId || "");
       setAltegioUserToken(settings.altegioUserToken || "");
       setAltegioPartnerToken(settings.altegioPartnerToken || "");
@@ -112,24 +117,60 @@ export function IntegrationsClient() {
   }
 
   async function handleSaveInsta() {
+    if (!instaUsername.trim() || !instaAccountId.trim()) {
+      toast({ title: "Заполните имя пользователя и ID аккаунта", variant: "destructive" });
+      return;
+    }
+
     setSavingInsta(true);
     try {
+      const cleanUsername = instaUsername.replace(/^@/, "").trim();
       const res = await fetch("/api/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          instagramAccountId: instaAccountId,
-          instagramPageToken: instaPageToken,
+          instagramUsername: cleanUsername,
+          instagramAccountId: instaAccountId.trim(),
+          instagramPageToken: instaPageToken.trim(),
+          instagramAvatarUrl: instaAvatarUrl.trim(),
+          instagramConnected: "true",
         }),
       });
       if (res.ok) {
-        toast({ title: "Настройки Instagram сохранены" });
+        toast({ title: "Instagram аккаунт успешно подключен!" });
+        setInstaModalOpen(false);
         refetchSettings();
       } else {
         toast({ title: "Ошибка сохранения", variant: "destructive" });
       }
     } catch (e) {
       toast({ title: "Ошибка соединения", variant: "destructive" });
+    } finally {
+      setSavingInsta(false);
+    }
+  }
+
+  async function handleDisconnectInsta() {
+    if (!confirm("Вы действительно хотите отключить интеграцию с Instagram Direct?")) return;
+
+    setSavingInsta(true);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          instagramAccountId: "",
+          instagramPageToken: "",
+          instagramUsername: "",
+          instagramConnected: "false",
+        }),
+      });
+      if (res.ok) {
+        toast({ title: "Instagram аккаунт отключен" });
+        refetchSettings();
+      }
+    } catch (e) {
+      toast({ title: "Ошибка при отключении", variant: "destructive" });
     } finally {
       setSavingInsta(false);
     }
@@ -164,7 +205,8 @@ export function IntegrationsClient() {
 
   const isWaOnline = waSession?.isOnline;
   const isAltegioConfigured = Boolean(altegioCompanyId && (altegioUserToken || (altegioLogin && altegioPassword)));
-  const webhookUrl = typeof window !== "undefined" ? `${window.location.origin}/api/webhooks/instagram` : "https://fotoidea.kz/api/webhooks/instagram";
+  const isInstaConnected = settings.instagramConnected === "true" || Boolean(settings.instagramAccountId && settings.instagramAccountId.length > 3);
+  const webhookUrl = typeof window !== "undefined" ? `${window.location.origin}/api/webhooks/instagram` : "https://crm.fotoidea.kz/api/webhooks/instagram";
 
   function copyWebhook() {
     navigator.clipboard.writeText(webhookUrl);
@@ -173,7 +215,7 @@ export function IntegrationsClient() {
   }
 
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="max-w-4xl space-y-8">
       {/* Altegio Import Dialog */}
       <AltegioImportDialog
         open={altegioImportOpen}
@@ -226,7 +268,189 @@ export function IntegrationsClient() {
         </DialogContent>
       </Dialog>
 
-      {/* ALTEGIO CARD */}
+      {/* Instagram Connect / Reconnect Dialog Modal */}
+      <Dialog open={instaModalOpen} onOpenChange={setInstaModalOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base font-bold">
+              <div className="h-7 w-7 rounded-lg bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] flex items-center justify-center text-white shrink-0">
+                <Instagram className="h-4 w-4" />
+              </div>
+              Подключение Instagram Direct
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 pt-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Имя пользователя Instagram (без @)
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-2 text-xs text-slate-400 font-bold">@</span>
+                <Input
+                  value={instaUsername}
+                  onChange={(e) => setInstaUsername(e.target.value.replace(/^@/, ""))}
+                  placeholder="maqta_qyz07"
+                  className="pl-7 text-xs h-9"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Instagram Business Account ID
+              </label>
+              <Input
+                value={instaAccountId}
+                onChange={(e) => setInstaAccountId(e.target.value)}
+                placeholder="17841441579820989"
+                className="text-xs h-9 font-mono"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Узнайте ID в Facebook Business Manager или Meta Developers Console
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Page Access Token (Meta Graph API)
+              </label>
+              <Input
+                type="password"
+                value={instaPageToken}
+                onChange={(e) => setInstaPageToken(e.target.value)}
+                placeholder="EAAG..."
+                className="text-xs h-9 font-mono"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <Link2 className="h-3.5 w-3.5 text-slate-400" />
+                Webhook URL (для вебхуков Facebook)
+              </label>
+              <div className="flex items-center gap-2">
+                <Input value={webhookUrl} readOnly className="text-xs h-9 font-mono bg-slate-50 dark:bg-slate-900" />
+                <Button size="sm" variant="outline" onClick={copyWebhook} className="shrink-0 text-xs h-9">
+                  {copiedWebhook ? <Check className="h-3.5 w-3.5 text-green-600 mr-1" /> : <Copy className="h-3.5 w-3.5 mr-1" />}
+                  {copiedWebhook ? "Скопировано" : "Копировать"}
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t">
+              <Button variant="outline" size="sm" onClick={() => setInstaModalOpen(false)} className="text-xs h-9">
+                Отмена
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleSaveInsta}
+                disabled={savingInsta}
+                className="text-xs h-9 bg-gradient-to-r from-[#f09433] via-[#dc2743] to-[#bc1888] hover:opacity-95 text-white font-semibold shadow-xs"
+              >
+                {savingInsta ? <RefreshCw className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Check className="h-3.5 w-3.5 mr-1.5" />}
+                Сохранить и подключить
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* 1. INSTAGRAM DIRECT SECTION (As requested) */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+          <span>📷</span> Подключение Instagram Direct
+        </h3>
+
+        <div className="border border-slate-200 dark:border-slate-800 rounded-2xl p-6 bg-background shadow-2xs space-y-6">
+          {/* Main Top Row */}
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+            <div className="flex items-start gap-4">
+              {/* Instagram Gradient Logo Circle */}
+              <div className="h-12 w-12 rounded-full p-[2px] bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] shrink-0 flex items-center justify-center shadow-xs">
+                <div className="w-full h-full bg-white dark:bg-slate-950 rounded-full flex items-center justify-center">
+                  <Instagram className="h-6 w-6 text-[#dc2743]" />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <h2 className="font-bold text-lg text-slate-900 dark:text-slate-100">Instagram</h2>
+                <p className="text-xs text-slate-500 max-w-xl leading-relaxed">
+                  Подключите чат-бот к Instagram Direct, чтобы эффективно взаимодействовать с подписчиками, поддерживать их вовлеченность и увеличивать продажи.
+                </p>
+              </div>
+            </div>
+
+            {isInstaConnected ? (
+              <button
+                onClick={handleDisconnectInsta}
+                disabled={savingInsta}
+                className="text-xs font-semibold text-rose-600 hover:text-rose-700 underline shrink-0 transition-colors self-start sm:self-auto"
+              >
+                Отключить
+              </button>
+            ) : (
+              <Button
+                size="sm"
+                onClick={() => setInstaModalOpen(true)}
+                className="text-xs font-semibold bg-gradient-to-r from-[#f09433] via-[#dc2743] to-[#bc1888] hover:opacity-95 text-white shrink-0 shadow-xs"
+              >
+                Подключить
+              </Button>
+            )}
+          </div>
+
+          {/* Connected Account Card Row */}
+          {isInstaConnected ? (
+            <div className="border border-slate-200 dark:border-slate-800 rounded-xl p-4 bg-slate-50/70 dark:bg-slate-900/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                {/* Account Avatar */}
+                <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-cyan-500 to-rose-500 p-[1.5px] shrink-0 shadow-2xs">
+                  <div className="w-full h-full rounded-full bg-cyan-600 text-white flex items-center justify-center font-bold text-xs">
+                    {settings.instagramUsername ? settings.instagramUsername.slice(0, 5) : "Toomi"}
+                  </div>
+                </div>
+
+                <div className="truncate">
+                  <p className="font-bold text-sm text-slate-900 dark:text-slate-100 truncate">
+                    @{settings.instagramUsername || "maqta_qyz07"}
+                  </p>
+                  <p className="text-xs text-slate-500 truncate">
+                    ID: {settings.instagramAccountId || "17841441579820989"} • Бизнес-аккаунт привязан и активен
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 shadow-2xs">
+                  ✓ Подключено
+                </span>
+
+                <button
+                  onClick={() => setInstaModalOpen(true)}
+                  className="text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 underline transition-colors cursor-pointer"
+                >
+                  Переподключить
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="border border-dashed border-slate-200 dark:border-slate-800 rounded-xl p-6 text-center bg-slate-50/40 dark:bg-slate-900/30">
+              <p className="text-xs text-slate-500 mb-3">Instagram аккаунт еще не привязан</p>
+              <Button
+                size="sm"
+                onClick={() => setInstaModalOpen(true)}
+                className="text-xs font-semibold bg-gradient-to-r from-[#f09433] via-[#dc2743] to-[#bc1888] text-white hover:opacity-95 shadow-xs"
+              >
+                <Instagram className="h-3.5 w-3.5 mr-1.5" />
+                Подключить Instagram аккаунт
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 2. ALTEGIO CARD */}
       <div className="border rounded-2xl p-6 bg-background shadow-2xs space-y-5">
         <div className="flex items-center justify-between pb-3 border-b">
           <div className="flex items-center gap-3">
@@ -313,7 +537,7 @@ export function IntegrationsClient() {
         </div>
       </div>
 
-      {/* WHATSAPP CARD */}
+      {/* 3. WHATSAPP CARD */}
       <div className="border rounded-2xl p-6 bg-background shadow-2xs space-y-5">
         <div className="flex items-center justify-between pb-3 border-b">
           <div className="flex items-center gap-3">
@@ -382,69 +606,6 @@ export function IntegrationsClient() {
           <Button size="sm" onClick={handleSaveWa} disabled={savingWa} className="text-xs bg-green-600 hover:bg-green-700 text-white">
             {savingWa ? <RefreshCw className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Check className="h-3.5 w-3.5 mr-1.5" />}
             Сохранить WhatsApp
-          </Button>
-        </div>
-      </div>
-
-      {/* INSTAGRAM CARD */}
-      <div className="border rounded-2xl p-6 bg-background shadow-2xs space-y-5">
-        <div className="flex items-center justify-between pb-3 border-b">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-pink-50 text-pink-600 flex items-center justify-center border border-pink-200">
-              <Instagram className="h-5 w-5" />
-            </div>
-            <div>
-              <h2 className="font-bold text-base text-slate-900">Instagram Direct (Meta Graph API)</h2>
-              <p className="text-xs text-muted-foreground">Прием и отправка сообщений из Instagram Direct</p>
-            </div>
-          </div>
-
-          <Badge className={cn("px-3 py-1 text-xs font-semibold", instaAccountId && instaPageToken ? "bg-green-500 text-white" : "bg-slate-200 text-slate-700")}>
-            {instaAccountId && instaPageToken ? "🟢 Подключено" : "⚪ Не настроено"}
-          </Badge>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-slate-700">Instagram Business Account ID</label>
-            <Input
-              value={instaAccountId}
-              onChange={(e) => setInstaAccountId(e.target.value)}
-              placeholder="17841400000000000"
-              className="text-xs h-9 font-mono"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-slate-700">Page Access Token</label>
-            <Input
-              type="password"
-              value={instaPageToken}
-              onChange={(e) => setInstaPageToken(e.target.value)}
-              placeholder="EAAG..."
-              className="text-xs h-9 font-mono"
-            />
-          </div>
-
-          <div className="space-y-1.5 md:col-span-2">
-            <label className="text-xs font-medium text-slate-700 flex items-center gap-1.5">
-              <Link2 className="h-3.5 w-3.5 text-slate-400" />
-              Webhook URL (укажите в Facebook Developers Console)
-            </label>
-            <div className="flex items-center gap-2">
-              <Input value={webhookUrl} readOnly className="text-xs h-9 font-mono bg-slate-50" />
-              <Button size="sm" variant="outline" onClick={copyWebhook} className="shrink-0 text-xs h-9">
-                {copiedWebhook ? <Check className="h-3.5 w-3.5 text-green-600 mr-1" /> : <Copy className="h-3.5 w-3.5 mr-1" />}
-                {copiedWebhook ? "Скопировано" : "Копировать"}
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-end pt-2">
-          <Button size="sm" onClick={handleSaveInsta} disabled={savingInsta} className="text-xs">
-            {savingInsta ? <RefreshCw className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Check className="h-3.5 w-3.5 mr-1.5" />}
-            Сохранить Instagram
           </Button>
         </div>
       </div>
