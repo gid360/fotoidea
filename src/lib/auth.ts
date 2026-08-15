@@ -41,22 +41,37 @@ export const authOptions: NextAuthOptions = {
 
           const loginInput = (credentials.login as string).trim();
           const password = credentials.password as string;
-          const normalizedPhone = normalizePhone(loginInput);
           const rawDigits = loginInput.replace(/\D/g, "");
-          const formattedPhone1 = rawDigits.length === 11 ? `+7 ${rawDigits.slice(1, 4)} ${rawDigits.slice(4, 7)} ${rawDigits.slice(7, 9)} ${rawDigits.slice(9)}` : null;
-          const formattedPhone2 = rawDigits.length === 11 ? `+7 (${rawDigits.slice(1, 4)}) ${rawDigits.slice(4, 7)}-${rawDigits.slice(7, 9)}-${rawDigits.slice(9)}` : null;
-          const formattedPhone3 = rawDigits.length === 11 ? `+7 ${rawDigits.slice(1, 4)} ${rawDigits.slice(4, 7)} ${rawDigits.slice(7)}` : null;
+
+          const phoneVariants: string[] = [loginInput];
+
+          if (rawDigits.length >= 10) {
+            const tenDigits =
+              rawDigits.length === 11 && (rawDigits.startsWith("7") || rawDigits.startsWith("8"))
+                ? rawDigits.slice(1)
+                : rawDigits.slice(-10);
+
+            phoneVariants.push(
+              `+7${tenDigits}`,
+              `8${tenDigits}`,
+              `7${tenDigits}`,
+              tenDigits,
+              `+7 ${tenDigits.slice(0, 3)} ${tenDigits.slice(3, 6)} ${tenDigits.slice(6, 8)} ${tenDigits.slice(8)}`,
+              `+7 ${tenDigits.slice(0, 3)} ${tenDigits.slice(3, 6)} ${tenDigits.slice(6)}`,
+              `8 ${tenDigits.slice(0, 3)} ${tenDigits.slice(3, 6)} ${tenDigits.slice(6, 8)} ${tenDigits.slice(8)}`,
+              `8 ${tenDigits.slice(0, 3)} ${tenDigits.slice(3, 6)} ${tenDigits.slice(6)}`,
+              `+7 (${tenDigits.slice(0, 3)}) ${tenDigits.slice(3, 6)}-${tenDigits.slice(6, 8)}-${tenDigits.slice(8)}`,
+              `8 (${tenDigits.slice(0, 3)}) ${tenDigits.slice(3, 6)}-${tenDigits.slice(6, 8)}-${tenDigits.slice(8)}`
+            );
+          }
+
+          const uniqueVariants = Array.from(new Set(phoneVariants));
 
           const user = await prisma.user.findFirst({
             where: {
               isActive: true,
               OR: [
-                { phone: loginInput },
-                { phone: normalizedPhone },
-                { phone: rawDigits },
-                ...(formattedPhone1 ? [{ phone: formattedPhone1 }] : []),
-                ...(formattedPhone2 ? [{ phone: formattedPhone2 }] : []),
-                ...(formattedPhone3 ? [{ phone: formattedPhone3 }] : []),
+                ...uniqueVariants.map((p) => ({ phone: p })),
                 { email: loginInput.toLowerCase() },
               ],
             },
