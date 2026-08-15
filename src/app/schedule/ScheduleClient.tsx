@@ -266,7 +266,19 @@ export function ScheduleClient({ initialHalls }: { initialHalls: Hall[] }) {
     }
   }
 
-  const pxPerMin = compact ? PX_PER_MIN_COMPACT : PX_PER_MIN_NORMAL;
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  const isCompactEffective = isMobile || compact;
+  const pxPerMin = isCompactEffective ? PX_PER_MIN_COMPACT : PX_PER_MIN_NORMAL;
   const hourPx   = 60 * pxPerMin;
   const totalH   = (HOUR_END - HOUR_START) * hourPx;
   const [selectedHalls, setSelectedHalls] = useState<Set<string>>(new Set());
@@ -323,25 +335,26 @@ export function ScheduleClient({ initialHalls }: { initialHalls: Hall[] }) {
   return (
     <div className="flex flex-col h-full">
       {/* ─ Шапка ─────────────────────────────────────────── */}
-      <div className="p-4 border-b bg-background shrink-0 space-y-3">
+      <div className="p-2 sm:p-4 border-b bg-background shrink-0 space-y-1.5 sm:space-y-3">
         {/* Строка навигации */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => setSelectedDate(d => subDays(d, 1))}>
+        <div className="flex items-center justify-between gap-1.5">
+          <div className="flex items-center gap-1 sm:gap-2 min-w-0">
+            <Button variant="outline" size="sm" className="h-8 w-8 p-0 shrink-0" onClick={() => setSelectedDate(d => subDays(d, 1))}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setSelectedDate(new Date())}>
+            <Button variant="outline" size="sm" className="h-8 px-2 text-xs shrink-0" onClick={() => setSelectedDate(new Date())}>
               Сегодня
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setSelectedDate(d => addDays(d, 1))}>
+            <Button variant="outline" size="sm" className="h-8 w-8 p-0 shrink-0" onClick={() => setSelectedDate(d => addDays(d, 1))}>
               <ChevronRight className="h-4 w-4" />
             </Button>
             <Popover>
               <PopoverTrigger asChild>
-                <button className="flex items-center gap-1.5 ml-1 px-2 py-1 rounded-md hover:bg-muted transition-colors">
-                  <CalendarDays className="h-4 w-4 text-muted-foreground" />
-                  <h2 className="text-base font-semibold capitalize">
-                    {format(selectedDate, "EEEE, d MMMM yyyy", { locale: ru })}
+                <button className="flex items-center gap-1 ml-0.5 px-2 py-1 rounded-md hover:bg-muted transition-colors min-w-0">
+                  <CalendarDays className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
+                  <h2 className="text-xs sm:text-base font-semibold capitalize truncate">
+                    <span className="sm:hidden">{format(selectedDate, "d MMM, EEE", { locale: ru })}</span>
+                    <span className="hidden sm:inline">{format(selectedDate, "EEEE, d MMMM yyyy", { locale: ru })}</span>
                   </h2>
                 </button>
               </PopoverTrigger>
@@ -350,9 +363,9 @@ export function ScheduleClient({ initialHalls }: { initialHalls: Hall[] }) {
               </PopoverContent>
             </Popover>
           </div>
-          <div className="flex items-center gap-2">
-            {/* Режим отображения */}
-            <div className="flex rounded-md border overflow-hidden">
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* Режим отображения (только для десктопа) */}
+            <div className="hidden md:flex rounded-md border overflow-hidden">
               <button
                 className={cn("px-2.5 py-1.5 text-xs flex items-center gap-1.5 transition-colors",
                   compact ? "bg-background text-muted-foreground" : "bg-primary text-primary-foreground")}
@@ -370,8 +383,8 @@ export function ScheduleClient({ initialHalls }: { initialHalls: Hall[] }) {
                 <LayoutGrid className="h-3.5 w-3.5" /> Компактный
               </button>
             </div>
-            <Button size="sm" onClick={() => { setCreateTime(undefined); setCreateHallId(undefined); setCreateOpen(true); }}>
-              <Plus className="h-4 w-4 mr-1" /> Запись
+            <Button size="sm" className="h-8 px-2.5 text-xs" onClick={() => { setCreateTime(undefined); setCreateHallId(undefined); setCreateOpen(true); }}>
+              <Plus className="h-3.5 w-3.5 mr-1" /> Запись
             </Button>
           </div>
         </div>
@@ -389,11 +402,11 @@ export function ScheduleClient({ initialHalls }: { initialHalls: Hall[] }) {
                 onClick={() => setSelectedDate(day)}
                 className={cn(
                   "flex-1 flex flex-col items-center py-1 rounded-lg text-xs transition-colors",
-                  isSelected ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+                  isSelected ? "bg-primary text-primary-foreground shadow-2xs" : "hover:bg-muted bg-slate-50/70 dark:bg-slate-800/40"
                 )}
               >
-                <span className="capitalize">{format(day, "EEE", { locale: ru })}</span>
-                <span className="font-bold">{format(day, "d")}</span>
+                <span className="capitalize text-[10px] sm:text-xs font-medium">{format(day, "EEE", { locale: ru })}</span>
+                <span className="font-bold text-xs sm:text-sm">{format(day, "d")}</span>
                 {dayEvents.length > 0 && (
                   <span className={cn("w-1 h-1 rounded-full mt-0.5", isSelected ? "bg-white" : "bg-primary")} />
                 )}
@@ -403,13 +416,13 @@ export function ScheduleClient({ initialHalls }: { initialHalls: Hall[] }) {
         </div>
 
         {/* Фильтр по залам */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs text-muted-foreground">Залы:</span>
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar flex-nowrap sm:flex-wrap">
+          <span className="text-[11px] sm:text-xs text-muted-foreground shrink-0">Залы:</span>
           <button
             onClick={() => setSelectedHalls(new Set())}
             className={cn(
-              "text-xs px-2.5 py-1 rounded-full border transition-colors",
-              selectedHalls.size === 0 ? "bg-foreground text-background border-foreground" : "hover:bg-muted"
+              "text-[11px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full border transition-colors shrink-0",
+              selectedHalls.size === 0 ? "bg-foreground text-background border-foreground font-semibold" : "hover:bg-muted border-slate-200 dark:border-slate-800"
             )}
           >
             Все
@@ -419,12 +432,12 @@ export function ScheduleClient({ initialHalls }: { initialHalls: Hall[] }) {
               key={hall.id}
               onClick={() => toggleHall(hall.id)}
               className={cn(
-                "text-xs px-2.5 py-1 rounded-full border transition-colors flex items-center gap-1.5",
-                selectedHalls.has(hall.id) ? "text-white border-transparent" : "hover:bg-muted"
+                "text-[11px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full border transition-colors flex items-center gap-1.5 shrink-0",
+                selectedHalls.has(hall.id) ? "text-white border-transparent font-medium shadow-2xs" : "hover:bg-muted border-slate-200 dark:border-slate-800"
               )}
               style={selectedHalls.has(hall.id) ? { backgroundColor: hall.colorHex } : {}}
             >
-              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: hall.colorHex }} />
+              <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full shrink-0" style={{ backgroundColor: hall.colorHex }} />
               {hall.name}
             </button>
           ))}
