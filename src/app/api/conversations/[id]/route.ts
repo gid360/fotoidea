@@ -133,6 +133,22 @@ export async function GET(
               text = realMsg.conversation;
             } else if (realMsg?.extendedTextMessage?.text) {
               text = realMsg.extendedTextMessage.text;
+            } else if (realMsg?.buttonsResponseMessage?.selectedDisplayText || realMsg?.buttonsResponseMessage?.selectedButtonId) {
+              text = realMsg.buttonsResponseMessage.selectedDisplayText || realMsg.buttonsResponseMessage.selectedButtonId || "";
+            } else if (realMsg?.buttonsMessage?.contentText || realMsg?.buttonsMessage?.headerText) {
+              text = realMsg.buttonsMessage.contentText || realMsg.buttonsMessage.headerText || "";
+            } else if (realMsg?.templateButtonReplyMessage?.selectedDisplayText) {
+              text = realMsg.templateButtonReplyMessage.selectedDisplayText;
+            } else if (realMsg?.listResponseMessage?.title || realMsg?.listResponseMessage?.singleSelectReply?.selectedRowId) {
+              text = realMsg.listResponseMessage.title || realMsg.listResponseMessage.singleSelectReply?.selectedRowId || "";
+            } else if (realMsg?.listMessage?.description || realMsg?.listMessage?.title) {
+              text = (realMsg.listMessage.title ? realMsg.listMessage.title + "\n" : "") + (realMsg.listMessage.description || "");
+            } else if (realMsg?.interactiveResponseMessage?.body?.text) {
+              text = realMsg.interactiveResponseMessage.body.text;
+            } else if (realMsg?.interactiveMessage?.body?.text) {
+              text = realMsg.interactiveMessage.body.text;
+            } else if (realMsg?.templateMessage?.hydratedTemplate?.hydratedContentText) {
+              text = realMsg.templateMessage.hydratedTemplate.hydratedContentText;
             } else if (realMsg?.audioMessage) {
               mediaType = "AUDIO";
               text = "🎤 Голосовое сообщение";

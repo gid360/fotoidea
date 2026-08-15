@@ -149,6 +149,21 @@ export async function GET() {
 
     const msg = c.lastMessage?.message;
     let text = msg?.conversation || msg?.extendedTextMessage?.text || "";
+    if (!text && (msg?.buttonsResponseMessage?.selectedDisplayText || msg?.buttonsResponseMessage?.selectedButtonId)) {
+      text = msg.buttonsResponseMessage.selectedDisplayText || msg.buttonsResponseMessage.selectedButtonId || "";
+    }
+    if (!text && (msg?.buttonsMessage?.contentText || msg?.buttonsMessage?.headerText)) {
+      text = msg.buttonsMessage.contentText || msg.buttonsMessage.headerText || "";
+    }
+    if (!text && msg?.templateButtonReplyMessage?.selectedDisplayText) {
+      text = msg.templateButtonReplyMessage.selectedDisplayText;
+    }
+    if (!text && (msg?.listResponseMessage?.title || msg?.listResponseMessage?.singleSelectReply?.selectedRowId)) {
+      text = msg.listResponseMessage.title || msg.listResponseMessage.singleSelectReply?.selectedRowId || "";
+    }
+    if (!text && msg?.interactiveResponseMessage?.body?.text) {
+      text = msg.interactiveResponseMessage.body.text;
+    }
     if (!text && msg?.audioMessage) text = "🎤 Голосовое сообщение";
     if (!text && msg?.imageMessage) text = "📷 Фотография";
     if (!text && msg?.documentMessage) text = "📄 Документ (" + (msg.documentMessage.fileName || "файл") + ")";
