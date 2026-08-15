@@ -551,7 +551,14 @@ export function ChatPanel({
             <Avatar src={client.avatarUrl} name={clientDisplayName(client)} size="md" />
             <ChannelBadge channel={client.channel} className="absolute -bottom-1 -right-1" />
           </div>
-          <div className="min-w-0 cursor-pointer flex-1" onClick={onOpenClientPanel}>
+          <div
+            className="min-w-0 flex-1 md:cursor-default cursor-pointer"
+            onClick={() => {
+              if (typeof window !== "undefined" && window.innerWidth < 768 && onOpenClientPanel) {
+                onOpenClientPanel();
+              }
+            }}
+          >
             <div className="flex items-center gap-1.5 flex-wrap">
               <h2 className="font-bold text-xs sm:text-sm truncate text-slate-900">{clientDisplayName(client)}</h2>
               {formatPhonePretty(client.phone) && (
@@ -592,7 +599,13 @@ export function ChatPanel({
             <RefreshCw className="h-4 w-4" />
           </Button>
 
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-600" onClick={onOpenClientPanel}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-slate-600 md:hidden"
+            onClick={onOpenClientPanel}
+            title="Инфо о клиенте"
+          >
             <Info className="h-4 w-4" />
           </Button>
         </div>

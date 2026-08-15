@@ -164,7 +164,12 @@ export function ClientPanel({
           <span className="font-semibold text-slate-700">Карточка клиента</span>
         </div>
         {onClose && (
-          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 md:hidden text-slate-500 hover:text-slate-700"
+            onClick={onClose}
+          >
             <X className="h-3.5 w-3.5" />
           </Button>
         )}

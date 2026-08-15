@@ -470,7 +470,7 @@ export function ConversationsClient() {
       </div>
 
       {/* COLUMN 3: RIGHT CLIENT PANEL */}
-      {detail && detail.id === activeSelectedId && (showClientPanel || mobileView === "client") && (
+      {detail && detail.id === activeSelectedId && (
         <div
           className={cn(
             "h-full shrink-0",
