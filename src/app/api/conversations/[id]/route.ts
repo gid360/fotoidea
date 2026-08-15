@@ -78,8 +78,11 @@ export async function GET(
 
         // 1. Build reactions map from standalone reaction messages or attached reaction fields
         const reactionsMap = new Map<string, string[]>();
+        const editedTargetIds = new Set<string>();
+
         for (const m of rawMsgs) {
           const msg = m.message || m;
+          // 1. Reactions
           if (msg?.reactionMessage?.key?.id && msg?.reactionMessage?.text) {
             const targetId = msg.reactionMessage.key.id;
             const emoji = msg.reactionMessage.text;
@@ -107,6 +110,15 @@ export async function GET(
               reactionsMap.set(targetId, list);
             }
           }
+
+          // 2. Edit targets from encrypted packets or protocol messages
+          const editTargetId = msg?.secretEncryptedMessage?.targetMessageKey?.id
+            || msg?.protocolMessage?.key?.id
+            || msg?.editedMessage?.message?.protocolMessage?.key?.id
+            || m?.protocolMessage?.key?.id;
+          if (editTargetId) {
+            editedTargetIds.add(editTargetId);
+          }
         }
 
         // 2. Process messages
@@ -120,8 +132,17 @@ export async function GET(
               || msg?.editedMessage?.message?.protocolMessage?.editedMessage
               || msg;
 
-            // Ignore standalone reaction notifications as regular chat bubbles
+            // Ignore standalone reaction notifications and technical encrypted messages
             if (realMsg?.reactionMessage && !realMsg?.conversation && !realMsg?.extendedTextMessage) {
+              return null;
+            }
+            if (realMsg?.secretEncryptedMessage && !realMsg?.conversation && !realMsg?.extendedTextMessage) {
+              return null;
+            }
+            if (m.messageType === "secretEncryptedMessage" || m.messageType === "senderKeyDistributionMessage") {
+              return null;
+            }
+            if (realMsg?.protocolMessage && !realMsg?.conversation && !realMsg?.extendedTextMessage && !realMsg?.protocolMessage?.editedMessage) {
               return null;
             }
 
@@ -133,6 +154,10 @@ export async function GET(
               text = realMsg.conversation;
             } else if (realMsg?.extendedTextMessage?.text) {
               text = realMsg.extendedTextMessage.text;
+            } else if (realMsg?.protocolMessage?.editedMessage) {
+              text = realMsg.protocolMessage.editedMessage.conversation
+                || realMsg.protocolMessage.editedMessage.extendedTextMessage?.text
+                || "";
             } else if (realMsg?.buttonsResponseMessage?.selectedDisplayText || realMsg?.buttonsResponseMessage?.selectedButtonId) {
               text = realMsg.buttonsResponseMessage.selectedDisplayText || realMsg.buttonsResponseMessage.selectedButtonId || "";
             } else if (realMsg?.buttonsMessage?.contentText || realMsg?.buttonsMessage?.headerText) {
@@ -203,7 +228,9 @@ export async function GET(
               ? new Date(m.messageTimestamp * 1000).toISOString()
               : (m.createdAt || new Date().toISOString());
 
+            const msgId = m.id || m.key?.id || Math.random().toString();
             const isEdited = Boolean(
+              editedTargetIds.has(msgId) ||
               m.isEdited ||
               m.edited ||
               msg?.editedMessage ||
@@ -216,7 +243,6 @@ export async function GET(
               (Array.isArray(m.MessageUpdate) && m.MessageUpdate.some((u: any) => u.status === "EDITED" || u.updateType === "EDIT"))
             );
 
-            const msgId = m.id || m.key?.id || Math.random().toString();
             const msgReactions = reactionsMap.get(msgId) || (m.reactions?.text ? [m.reactions.text] : []);
 
             return {
@@ -236,7 +262,9 @@ export async function GET(
           })
         );
 
-        messages = (processedMsgs.filter(Boolean) as any[]).reverse();
+        messages = (processedMsgs.filter(Boolean) as any[]).sort(
+          (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
       }
 
       // 3. Query phonebook contact if pushName is missing
