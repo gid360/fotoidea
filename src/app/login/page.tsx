@@ -11,12 +11,49 @@ import { Camera } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [login, setLogin] = useState("+7");
+  const [login, setLogin] = useState("+7 ");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string | null>("/logo.svg");
   const [studioName, setStudioName] = useState("Fotoidea");
+
+  function handleLoginChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const val = e.target.value;
+
+    // If typing email or letters, allow free typing
+    if (/[a-zA-Z@]/.test(val)) {
+      setLogin(val);
+      return;
+    }
+
+    const digits = val.replace(/\D/g, "");
+    if (digits.length === 0) {
+      setLogin("+7 ");
+      return;
+    }
+
+    let num = digits;
+    if (num.startsWith("7") || num.startsWith("8")) {
+      num = num.slice(1);
+    }
+
+    let formatted = "+7";
+    if (num.length > 0) {
+      formatted += " (" + num.substring(0, 3);
+    }
+    if (num.length >= 4) {
+      formatted += ") " + num.substring(3, 6);
+    }
+    if (num.length >= 7) {
+      formatted += "-" + num.substring(6, 8);
+    }
+    if (num.length >= 9) {
+      formatted += "-" + num.substring(8, 10);
+    }
+
+    setLogin(formatted);
+  }
 
   useEffect(() => {
     fetch("/api/settings")
@@ -74,7 +111,7 @@ export default function LoginPage() {
                 className="mt-1"
                 placeholder="+7 (7XX) XXX-XX-XX"
                 value={login}
-                onChange={(e) => setLogin(e.target.value)}
+                onChange={handleLoginChange}
                 autoComplete="username"
                 required
               />
