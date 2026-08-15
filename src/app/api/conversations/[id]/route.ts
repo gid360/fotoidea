@@ -145,12 +145,10 @@ export async function GET(
                   method: "POST",
                   headers,
                   body: JSON.stringify({
-                    message: {
-                      key: m.key,
-                      message: m.message,
-                    },
+                    message: m,
+                    convertToMp4: false,
                   }),
-                  signal: AbortSignal.timeout(5000),
+                  signal: AbortSignal.timeout(6000),
                 });
                 if (bRes.ok) {
                   const bData = await bRes.json();
@@ -176,10 +174,15 @@ export async function GET(
               } catch (e) {
                 console.error("Failed to decode media base64:", e);
               }
-            }
 
-            if (!mediaUrl && (realMsg?.audioMessage?.url || realMsg?.imageMessage?.url || realMsg?.videoMessage?.url || realMsg?.documentMessage?.url)) {
-              mediaUrl = realMsg?.audioMessage?.url || realMsg?.imageMessage?.url || realMsg?.videoMessage?.url || realMsg?.documentMessage?.url;
+              // Fallback to proxy route if immediate base64 not returned
+              if (!mediaUrl) {
+                const msgId = m.key?.id || m.id;
+                const msgJid = m.key?.remoteJid || remoteJid;
+                if (msgId) {
+                  mediaUrl = `/api/whatsapp/media?id=${encodeURIComponent(msgId)}&jid=${encodeURIComponent(msgJid)}&filename=${encodeURIComponent(fileName || "attachment")}`;
+                }
+              }
             }
 
             const ts = m.messageTimestamp

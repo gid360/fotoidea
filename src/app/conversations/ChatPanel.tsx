@@ -593,25 +593,33 @@ export function ChatPanel({
                   {/* DOCUMENT MESSAGE */}
                   {((m.mediaType as any) === "DOCUMENT" || (m.mediaUrl && ((m.mediaType as any) === "DOCUMENT" || /\.(pdf|docx?|xlsx?|pptx?|zip|rar|tar|txt|csv)(?:\?.*)?$/i.test(m.mediaUrl)))) ? (
                     (() => {
+                      const filename = m.fileName || (m.mediaUrl?.startsWith("data:") ? "Документ.pdf" : m.mediaUrl?.split("/").pop()?.split("?")[0]) || "Скачать файл";
                       const isPdf = !!(
+                        filename.toLowerCase().endsWith(".pdf") ||
                         m.fileName?.toLowerCase().endsWith(".pdf") ||
                         m.mediaUrl?.toLowerCase().includes(".pdf") ||
                         m.mediaUrl?.startsWith("data:application/pdf") ||
                         m.mediaUrl?.startsWith("data:application/x-pdf") ||
                         (m.mediaUrl?.startsWith("data:") && m.mediaUrl?.includes("JVBERi0"))
                       );
-                      const filename = m.fileName || (m.mediaUrl?.startsWith("data:") ? "Документ.pdf" : m.mediaUrl?.split("/").pop()?.split("?")[0]) || "Скачать файл";
+                      const rawUrl = m.mediaUrl || "";
+                      const safeUrl = rawUrl.includes("mmg.whatsapp.net")
+                        ? `/api/whatsapp/media?id=${encodeURIComponent(m.id)}&jid=${encodeURIComponent(detail?.remoteJid || "")}&filename=${encodeURIComponent(filename)}`
+                        : rawUrl;
+                      const downloadUrl = safeUrl.startsWith("/api/whatsapp/media")
+                        ? (safeUrl.includes("download=1") ? safeUrl : `${safeUrl}&download=1`)
+                        : safeUrl;
                       
                       if (isPdf) {
                         return (
                           <div
-                            onClick={() => setLightbox({ src: m.mediaUrl!, isPdf: true })}
+                            onClick={() => setLightbox({ src: safeUrl, isPdf: true })}
                             className="flex items-center gap-2 p-2 rounded-lg bg-black/10 hover:bg-black/15 transition-colors mb-1 text-current font-medium cursor-pointer"
                           >
                             <FileText className="h-4 w-4 shrink-0" />
                             <span className="truncate flex-1 hover:underline">{filename}</span>
                             <a
-                              href={m.mediaUrl || "#"}
+                              href={downloadUrl || "#"}
                               download={filename}
                               target="_blank"
                               rel="noreferrer"
@@ -627,7 +635,7 @@ export function ChatPanel({
                       
                       return (
                         <a
-                          href={m.mediaUrl || "#"}
+                          href={downloadUrl || "#"}
                           download={filename}
                           target="_blank"
                           rel="noreferrer"
