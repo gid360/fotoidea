@@ -115,10 +115,10 @@ function AudioMessagePlayer({ src, isOutgoing }: { src: string; isOutgoing: bool
   };
 
   return (
-    <div className={cn("flex items-center gap-3 p-2 rounded-xl border my-1 min-w-[200px]", isOutgoing ? "bg-green-700/40 border-white/20 text-white" : "bg-slate-100 border-slate-200 text-slate-800")}>
+    <div className={cn("flex items-center gap-3 p-2 rounded-xl border my-1 min-w-[200px]", isOutgoing ? "bg-[#103e2c] border-white/20 text-white" : "bg-slate-100 border-slate-200 text-slate-800")}>
       <button
         onClick={togglePlay}
-        className={cn("h-8 w-8 rounded-full flex items-center justify-center shrink-0 transition-transform active:scale-95", isOutgoing ? "bg-white text-green-700" : "bg-green-600 text-white")}
+        className={cn("h-8 w-8 rounded-full flex items-center justify-center shrink-0 transition-transform active:scale-95", isOutgoing ? "bg-white text-[#144d37]" : "bg-[#144d37] text-white")}
       >
         {playing ? <Pause className="h-4 w-4 fill-current" /> : <Play className="h-4 w-4 fill-current ml-0.5" />}
       </button>
@@ -644,7 +644,7 @@ export function ChatPanel({
                     className={cn(
                       "rounded-2xl px-4 py-2.5 text-xs shadow-xs leading-relaxed whitespace-pre-wrap break-words relative select-text",
                       isOutgoing
-                        ? "bg-green-600 text-white rounded-tr-none"
+                        ? "bg-[#144d37] text-white rounded-tr-none"
                         : "bg-white text-slate-800 border border-slate-200/80 rounded-tl-none"
                     )}
                   >
@@ -848,7 +848,7 @@ export function ChatPanel({
               onClick={handleSend}
               disabled={sending || !inputText.trim()}
               size="icon"
-              className="h-10 w-10 rounded-xl bg-green-600 hover:bg-green-700 text-white shrink-0 shadow-xs"
+              className="h-10 w-10 rounded-xl bg-[#144d37] hover:bg-[#0e3827] text-white shrink-0 shadow-xs"
             >
               {sending ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </Button>

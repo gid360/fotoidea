@@ -84,7 +84,7 @@ const EMPTY = { name: "", phone: "", source: "MANUAL" as "INSTAGRAM" | "WHATSAPP
 
 // ─── Stage settings dialog ────────────────────────────────────────────────────
 const STAGE_COLORS = [
-  "#6b7280","#3b82f6","#f97316","#0d9488","#22c55e","#ef4444",
+  "#6b7280","#3b82f6","#f97316","#0d9488","#144d37","#ef4444",
   "#ec4899","#16a34a","#f59e0b","#059669",
 ];
 

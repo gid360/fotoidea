@@ -90,7 +90,7 @@ export const SEGMENT_LABEL: Record<ClientDto["segment"], string> = {
 
 export const SEGMENT_COLOR: Record<ClientDto["segment"], string> = {
   NEW: "#94a3b8",
-  ACTIVE: "#22c55e",
+  ACTIVE: "#144d37",
   FORMER: "#eab308",
 };
 

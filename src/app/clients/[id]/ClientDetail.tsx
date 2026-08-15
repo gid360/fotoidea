@@ -38,7 +38,7 @@ const FUNNEL_STAGE_CONFIG: Record<string, { label: string; className: string }> 
 const FUNNEL_STAGE_COLOR: Record<string, string> = {
   NEW:          "#6b7280",
   CONVERSATION: "#3b82f6",
-  BOUGHT:       "#22c55e",
+  BOUGHT:       "#144d37",
   VISITED:      "#0d9488",
   REPEAT_BUYER: "#8b5cf6",
 };

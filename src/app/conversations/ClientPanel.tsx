@@ -21,7 +21,7 @@ import { ru } from "date-fns/locale";
 const DEFAULT_FUNNEL_STAGES: FunnelStageDto[] = [
   { id: "NEW",          name: "Новый",           order: 1, color: "#6b7280" },
   { id: "CONVERSATION", name: "Переписка",      order: 2, color: "#3b82f6" },
-  { id: "BOUGHT",       name: "Купил",           order: 3, color: "#22c55e" },
+  { id: "BOUGHT",       name: "Купил",           order: 3, color: "#144d37" },
   { id: "VISITED",      name: "Посетил",         order: 4, color: "#0d9488" },
   { id: "REPEAT_BUYER", name: "Повторно купил", order: 5, color: "#8b5cf6" },
 ];

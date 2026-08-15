@@ -15,7 +15,7 @@ const DEFAULTS: CrmStage[] = [
   { status: "QUALIFYING",   label: "Переписка",        color: "#3b82f6", order: 1 },
   { status: "TRIAL_BOOKED", label: "Записан на проб.", color: "#f97316", order: 2 },
   { status: "TRIAL_DONE",   label: "Был на пробном",   color: "#0d9488", order: 3 },
-  { status: "WON",          label: "Купил",            color: "#22c55e", order: 4 },
+  { status: "WON",          label: "Купил",            color: "#144d37", order: 4 },
   { status: "LOST",         label: "Отказ",            color: "#ef4444", order: 5 },
 ];
 
