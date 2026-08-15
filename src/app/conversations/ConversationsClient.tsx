@@ -218,6 +218,28 @@ export function ConversationsClient() {
     if (activeSelectedId) refetchDetail();
   };
 
+  const [visibleDialogsCount, setVisibleDialogsCount] = useState(15);
+
+  useEffect(() => {
+    setVisibleDialogsCount(15);
+  }, [search, channelFilter]);
+
+  const displayedConversations = useMemo(() => {
+    if (search.trim()) {
+      return sortedConversations;
+    }
+    return sortedConversations.slice(0, visibleDialogsCount);
+  }, [sortedConversations, visibleDialogsCount, search]);
+
+  const handleDialogsScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    if (scrollHeight - scrollTop - clientHeight < 100) {
+      if (visibleDialogsCount < sortedConversations.length) {
+        setVisibleDialogsCount((prev) => Math.min(prev + 15, sortedConversations.length));
+      }
+    }
+  };
+
   return (
     <div className="flex h-full w-full overflow-hidden bg-background">
       {/* COLUMN 1: LEFT CONVERSATIONS LIST (320px) */}
@@ -275,107 +297,117 @@ export function ConversationsClient() {
         </div>
 
         {/* Conversations List Items */}
-        <div className="flex-1 overflow-y-auto divide-y min-h-0">
+        <div
+          onScroll={handleDialogsScroll}
+          className="flex-1 overflow-y-auto divide-y min-h-0"
+        >
           {loading ? (
             <div className="p-8 text-center text-xs text-muted-foreground">
               <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-2" />
               Загрузка диалогов…
             </div>
-          ) : sortedConversations.length === 0 ? (
+          ) : displayedConversations.length === 0 ? (
             <div className="p-8 text-center text-xs text-muted-foreground">
               Диалоги не найдены
             </div>
           ) : (
-            sortedConversations.map((c) => {
-              const isSelected = activeSelectedId === c.id;
-              const isPinned = pinnedIds.includes(c.id) || Boolean(c.isPinned);
-              const isHighlighted = !!highlightedChats[c.id];
-              const lastMsg = c.messages?.[0];
+            <>
+              {displayedConversations.map((c) => {
+                const isSelected = activeSelectedId === c.id;
+                const isPinned = pinnedIds.includes(c.id) || Boolean(c.isPinned);
+                const isHighlighted = !!highlightedChats[c.id];
+                const lastMsg = c.messages?.[0];
 
-              return (
-                <div
-                  key={c.id}
-                  onClick={() => setSelectedId(c.id)}
-                  onMouseEnter={() => prefetchConversation(c.id)}
-                  className={cn(
-                    "p-3 cursor-pointer flex items-start gap-3 transition-all duration-500 relative group overflow-hidden",
-                    isSelected ? "bg-primary/10 hover:bg-primary/15" : "hover:bg-muted/50",
-                    isHighlighted && "bg-emerald-500/25 ring-2 ring-emerald-500/50 shadow-inner"
-                  )}
-                >
-                  {/* Emerald 1.5-second indicator strip on left edge */}
+                return (
                   <div
+                    key={c.id}
+                    onClick={() => setSelectedId(c.id)}
+                    onMouseEnter={() => prefetchConversation(c.id)}
                     className={cn(
-                      "absolute left-0 top-0 bottom-0 w-1.5 bg-emerald-500 transition-all duration-300",
-                      isHighlighted ? "opacity-100 scale-y-100" : "opacity-0 scale-y-0"
+                      "p-3 cursor-pointer flex items-start gap-3 transition-all duration-500 relative group overflow-hidden",
+                      isSelected ? "bg-primary/10 hover:bg-primary/15" : "hover:bg-muted/50",
+                      isHighlighted && "bg-emerald-500/25 ring-2 ring-emerald-500/50 shadow-inner"
                     )}
-                  />
-                  <div className="relative shrink-0">
-                    <Avatar src={c.client.avatarUrl} name={clientDisplayName(c.client)} size="md" />
-                    <ChannelBadge channel={c.client.channel} className="absolute -bottom-1 -right-1" />
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="font-semibold text-xs truncate text-slate-900">
-                          {clientDisplayName(c.client)}
-                        </span>
-                        <span
-                          className="h-2 w-2 rounded-full shrink-0"
-                          style={{ backgroundColor: SEGMENT_COLOR[c.client.segment] || "#94a3b8" }}
-                        />
-                      </div>
-                      <span className="text-[10px] text-muted-foreground shrink-0 ml-1">
-                        {c.lastMessageAt ? format(new Date(c.lastMessageAt), "HH:mm", { locale: ru }) : ""}
-                      </span>
-                    </div>
-
-                    <p className="text-xs text-muted-foreground truncate mt-0.5">
-                      {lastMsg?.direction === "OUTGOING" && (
-                        <span className="text-green-600 font-medium mr-1">Вы:</span>
+                  >
+                    {/* Emerald 1.5-second indicator strip on left edge */}
+                    <div
+                      className={cn(
+                        "absolute left-0 top-0 bottom-0 w-1.5 bg-emerald-500 transition-all duration-300",
+                        isHighlighted ? "opacity-100 scale-y-100" : "opacity-0 scale-y-0"
                       )}
-                      {lastMsg?.text || "Диалог"}
-                    </p>
+                    />
+                    <div className="relative shrink-0">
+                      <Avatar src={c.client.avatarUrl} name={clientDisplayName(c.client)} size="md" />
+                      <ChannelBadge channel={c.client.channel} className="absolute -bottom-1 -right-1" />
+                    </div>
 
-                    <div className="flex items-center justify-between mt-1">
-                      <span className="text-[10px] text-slate-400 font-mono">
-                        {c.client.name && c.client.name !== c.client.phone && c.client.name !== formatPhonePretty(c.client.phone)
-                          ? formatPhonePretty(c.client.phone)
-                          : ""}
-                      </span>
-
-                      <div className="flex items-center gap-1">
-                        {c.funnelStage && (
-                          <span
-                            className="text-[9px] px-1.5 py-0.2 rounded-full font-medium"
-                            style={{ backgroundColor: c.funnelStage.color + "20", color: c.funnelStage.color }}
-                          >
-                            {c.funnelStage.name}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="font-semibold text-xs truncate text-slate-900">
+                            {clientDisplayName(c.client)}
                           </span>
-                        )}
+                          <span
+                            className="h-2 w-2 rounded-full shrink-0"
+                            style={{ backgroundColor: SEGMENT_COLOR[c.client.segment] || "#94a3b8" }}
+                          />
+                        </div>
+                        <span className="text-[10px] text-muted-foreground shrink-0 ml-1">
+                          {c.lastMessageAt ? format(new Date(c.lastMessageAt), "HH:mm", { locale: ru }) : ""}
+                        </span>
+                      </div>
 
-                        <button
-                          onClick={(e) => togglePin(c.id, e)}
-                          className={cn(
-                            "p-0.5 rounded hover:bg-slate-200 transition-opacity",
-                            isPinned ? "opacity-100 text-amber-500" : "opacity-0 group-hover:opacity-100 text-slate-400"
+                      <p className="text-xs text-muted-foreground truncate mt-0.5">
+                        {lastMsg?.direction === "OUTGOING" && (
+                          <span className="text-green-600 font-medium mr-1">Вы:</span>
+                        )}
+                        {lastMsg?.text || "Диалог"}
+                      </p>
+
+                      <div className="flex items-center justify-between mt-1">
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          {c.client.name && c.client.name !== c.client.phone && c.client.name !== formatPhonePretty(c.client.phone)
+                            ? formatPhonePretty(c.client.phone)
+                            : ""}
+                        </span>
+
+                        <div className="flex items-center gap-1">
+                          {c.funnelStage && (
+                            <span
+                              className="text-[9px] px-1.5 py-0.2 rounded-full font-medium"
+                              style={{ backgroundColor: c.funnelStage.color + "20", color: c.funnelStage.color }}
+                            >
+                              {c.funnelStage.name}
+                            </span>
                           )}
-                        >
-                          <Pin className="h-3 w-3 fill-current" />
-                        </button>
 
-                        {(c.unreadCount ?? 0) > 0 && (
-                          <Badge className="bg-green-500 text-white text-[10px] px-1.5 py-0 h-4 min-w-4 flex items-center justify-center rounded-full">
-                            {c.unreadCount}
-                          </Badge>
-                        )}
+                          <button
+                            onClick={(e) => togglePin(c.id, e)}
+                            className={cn(
+                              "p-0.5 rounded hover:bg-slate-200 transition-opacity",
+                              isPinned ? "opacity-100 text-amber-500" : "opacity-0 group-hover:opacity-100 text-slate-400"
+                            )}
+                          >
+                            <Pin className="h-3 w-3 fill-current" />
+                          </button>
+
+                          {(c.unreadCount ?? 0) > 0 && (
+                            <Badge className="bg-green-500 text-white text-[10px] px-1.5 py-0 h-4 min-w-4 flex items-center justify-center rounded-full">
+                              {c.unreadCount}
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
+                );
+              })}
+              {visibleDialogsCount < sortedConversations.length && !search.trim() && (
+                <div className="p-3 text-center bg-slate-50/50">
+                  <div className="text-xs text-muted-foreground italic">Прокрутите для загрузки еще...</div>
                 </div>
-              );
-            })
+              )}
+            </>
           )}
         </div>
       </div>

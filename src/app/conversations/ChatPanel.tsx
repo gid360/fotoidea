@@ -193,9 +193,45 @@ export function ChatPanel({
     ? messages.filter((m) => m.text?.toLowerCase().includes(searchQuery.toLowerCase()))
     : messages;
 
+  const [visibleMessagesCount, setVisibleMessagesCount] = useState(15);
+  const [isLoadingOlder, setIsLoadingOlder] = useState(false);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
-  }, [conversation.id, messages.length]);
+    setVisibleMessagesCount(15);
+  }, [conversation.id]);
+
+  const displayedMessages = useMemo(() => {
+    if (searchQuery.trim()) {
+      return filteredMessages;
+    }
+    return filteredMessages.slice(-visibleMessagesCount);
+  }, [filteredMessages, visibleMessagesCount, searchQuery]);
+
+  const handleChatScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const container = e.currentTarget;
+    if (container.scrollTop < 60 && !isLoadingOlder && visibleMessagesCount < filteredMessages.length && !searchQuery.trim()) {
+      setIsLoadingOlder(true);
+      const prevScrollHeight = container.scrollHeight;
+      const prevScrollTop = container.scrollTop;
+
+      setVisibleMessagesCount((prev) => Math.min(prev + 15, filteredMessages.length));
+
+      requestAnimationFrame(() => {
+        if (chatContainerRef.current) {
+          const newScrollHeight = chatContainerRef.current.scrollHeight;
+          chatContainerRef.current.scrollTop = newScrollHeight - prevScrollHeight + prevScrollTop;
+        }
+        setIsLoadingOlder(false);
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (!isLoadingOlder) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
+    }
+  }, [conversation.id, displayedMessages.length]);
 
   const [msgReactions, setMsgReactions] = useState<Record<string, string>>({});
   const [activeEmojiMsgId, setActiveEmojiMsgId] = useState<string | null>(null);
@@ -470,15 +506,32 @@ export function ChatPanel({
       </div>
 
       {/* Chat Messages Body */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:16px_16px]">
-        {filteredMessages.length === 0 ? (
+      <div
+        ref={chatContainerRef}
+        onScroll={handleChatScroll}
+        className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:16px_16px]"
+      >
+        {/* Load older messages button / indicator */}
+        {visibleMessagesCount < filteredMessages.length && !searchQuery.trim() && (
+          <div className="flex justify-center py-1 select-none">
+            <button
+              onClick={() => setVisibleMessagesCount((prev) => Math.min(prev + 15, filteredMessages.length))}
+              className="text-[11px] text-primary bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 border border-slate-200 dark:border-slate-700 rounded-full px-3 py-1 shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer font-medium"
+            >
+              <RefreshCw className={cn("h-3 w-3", isLoadingOlder && "animate-spin")} />
+              <span>Показать предыдущие сообщения ({filteredMessages.length - visibleMessagesCount})</span>
+            </button>
+          </div>
+        )}
+
+        {displayedMessages.length === 0 ? (
           <div className="h-full flex items-center justify-center text-xs text-slate-400">
             {searchQuery ? "Сообщения не найдены" : "История переписки пуста. Напишите сообщение ниже."}
           </div>
         ) : (
-          filteredMessages.map((m, i) => {
+          displayedMessages.map((m, i) => {
             const isOutgoing = m.direction === "OUTGOING";
-            const prevMsg = i > 0 ? filteredMessages[i - 1] : null;
+            const prevMsg = i > 0 ? displayedMessages[i - 1] : null;
             const msgDateStr = m.createdAt ? format(new Date(m.createdAt), "yyyy-MM-dd") : "";
             const prevDateStr = prevMsg?.createdAt ? format(new Date(prevMsg.createdAt), "yyyy-MM-dd") : "";
             const showDateHeader = i === 0 || msgDateStr !== prevDateStr;
