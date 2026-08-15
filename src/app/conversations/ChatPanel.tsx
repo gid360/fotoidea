@@ -29,6 +29,23 @@ const QUICK_REPLIES = [
   { title: "Сертификаты", text: "Подарочный сертификат можно приобрести как в электронном виде, так и в брендированном бумажном конверте." },
 ];
 
+function formatDateHeader(dateStr: string) {
+  try {
+    const d = new Date(dateStr);
+    const now = new Date();
+    const isToday = d.toDateString() === now.toDateString();
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    const isYesterday = d.toDateString() === yesterday.toDateString();
+
+    if (isToday) return "Сегодня";
+    if (isYesterday) return "Вчера";
+    return format(d, "d MMMM yyyy", { locale: ru });
+  } catch {
+    return "";
+  }
+}
+
 function AudioMessagePlayer({ src, isOutgoing }: { src: string; isOutgoing: boolean }) {
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -461,214 +478,237 @@ export function ChatPanel({
         ) : (
           filteredMessages.map((m, i) => {
             const isOutgoing = m.direction === "OUTGOING";
-            const reaction = msgReactions[m.id];
+            const prevMsg = i > 0 ? filteredMessages[i - 1] : null;
+            const msgDateStr = m.createdAt ? format(new Date(m.createdAt), "yyyy-MM-dd") : "";
+            const prevDateStr = prevMsg?.createdAt ? format(new Date(prevMsg.createdAt), "yyyy-MM-dd") : "";
+            const showDateHeader = i === 0 || msgDateStr !== prevDateStr;
+
+            const allReactions = Array.from(new Set([
+              ...(Array.isArray(m.reactions) ? m.reactions : []),
+              ...(msgReactions[m.id] ? [msgReactions[m.id]] : [])
+            ])).filter(Boolean);
 
             return (
-              <div key={m.id || i} className={cn("flex flex-col max-w-[75%] group relative animate-in fade-in-50 slide-in-from-bottom-2 duration-200", isOutgoing ? "ml-auto items-end" : "mr-auto items-start")}>
-                {/* Quick Hover Actions (Expandable Emoji Picker & Forward) */}
-                <div className={cn(
-                  "absolute -top-3.5 z-20 hidden group-hover:flex items-center gap-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full px-1.5 py-0.5 shadow-md text-xs",
-                  isOutgoing ? "right-2" : "left-2"
-                )}>
-                  {/* Inline Emoji Trigger & Floating Selector with Hover Bridge */}
-                  <div
-                    className="relative flex items-center"
-                    onMouseLeave={() => setActiveEmojiMsgId(null)}
-                  >
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setActiveEmojiMsgId(activeEmojiMsgId === m.id ? null : m.id);
-                      }}
-                      onMouseEnter={() => setActiveEmojiMsgId(m.id)}
-                      className="p-1 text-slate-500 hover:text-amber-500 hover:scale-110 transition-transform flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
-                      title="Добавить реакцию"
-                    >
-                      {reaction ? <span className="text-xs leading-none">{reaction}</span> : <Smile className="h-3.5 w-3.5" />}
-                    </button>
-
-                    {/* Floating Emoji Bar with pb-1.5 hover bridge touching the trigger button */}
-                    {activeEmojiMsgId === m.id && (
-                      <div className={cn("absolute bottom-full pb-1.5 z-30", isOutgoing ? "right-0" : "left-0")}>
-                        <div className="flex items-center gap-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full px-2 py-1 shadow-xl animate-in fade-in-50 zoom-in-95 whitespace-nowrap">
-                          {["👍", "👌", "❤️", "😂", "😮", "😢", "🙏"].map((emoji) => (
-                            <button
-                              key={emoji}
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleReact(m.id, emoji);
-                                setActiveEmojiMsgId(null);
-                              }}
-                              className="hover:scale-130 transition-transform p-0.5 text-sm leading-none rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
-                            >
-                              {emoji}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+              <div key={m.id || i} className="space-y-2">
+                {/* Date header separator */}
+                {showDateHeader && (
+                  <div className="flex justify-center my-3 select-none sticky top-1 z-10">
+                    <span className="bg-slate-200/90 dark:bg-slate-800/90 text-slate-600 dark:text-slate-300 backdrop-blur-xs px-3 py-1 rounded-full text-[11px] font-medium shadow-2xs border border-slate-300/40 dark:border-slate-700/50">
+                      {formatDateHeader(m.createdAt)}
+                    </span>
                   </div>
+                )}
 
-                  <div className="w-[1px] h-3 bg-slate-200 dark:bg-slate-700 my-auto" />
+                <div className={cn("flex flex-col max-w-[75%] group relative animate-in fade-in-50 slide-in-from-bottom-2 duration-200", isOutgoing ? "ml-auto items-end" : "mr-auto items-start")}>
+                  {/* Quick Hover Actions (Expandable Emoji Picker & Forward) */}
+                  <div className={cn(
+                    "absolute -top-3.5 z-20 hidden group-hover:flex items-center gap-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full px-1.5 py-0.5 shadow-md text-xs",
+                    isOutgoing ? "right-2" : "left-2"
+                  )}>
+                    {/* Inline Emoji Trigger & Floating Selector with Hover Bridge */}
+                    <div
+                      className="relative flex items-center"
+                      onMouseLeave={() => setActiveEmojiMsgId(null)}
+                    >
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveEmojiMsgId(activeEmojiMsgId === m.id ? null : m.id);
+                        }}
+                        onMouseEnter={() => setActiveEmojiMsgId(m.id)}
+                        className="p-1 text-slate-500 hover:text-amber-500 hover:scale-110 transition-transform flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
+                        title="Добавить реакцию"
+                      >
+                        {allReactions.length > 0 ? <span className="text-xs leading-none">{allReactions[0]}</span> : <Smile className="h-3.5 w-3.5" />}
+                      </button>
 
-                  {/* Edit Pencil Button (for outgoing text messages) */}
-                  {isOutgoing && (
+                      {/* Floating Emoji Bar with pb-1.5 hover bridge touching the trigger button */}
+                      {activeEmojiMsgId === m.id && (
+                        <div className={cn("absolute bottom-full pb-1.5 z-30", isOutgoing ? "right-0" : "left-0")}>
+                          <div className="flex items-center gap-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full px-2 py-1 shadow-xl animate-in fade-in-50 zoom-in-95 whitespace-nowrap">
+                            {["👍", "👌", "❤️", "😂", "😮", "😢", "🙏"].map((emoji) => (
+                              <button
+                                key={emoji}
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleReact(m.id, emoji);
+                                  setActiveEmojiMsgId(null);
+                                }}
+                                className="hover:scale-130 transition-transform p-0.5 text-sm leading-none rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
+                              >
+                                {emoji}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="w-[1px] h-3 bg-slate-200 dark:bg-slate-700 my-auto" />
+
+                    {/* Edit Pencil Button (for outgoing text messages) */}
+                    {isOutgoing && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingMsg(m);
+                          setEditText(m.text || "");
+                        }}
+                        className="p-1 text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
+                        title="Редактировать сообщение"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+
+                    {/* Forward Button */}
                     <button
                       type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setEditingMsg(m);
-                        setEditText(m.text || "");
+                      onClick={() => {
+                        setForwardingMsg(m);
+                        setForwardModalOpen(true);
                       }}
                       className="p-1 text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
-                      title="Редактировать сообщение"
+                      title="Переслать сообщение"
                     >
-                      <Pencil className="h-3.5 w-3.5" />
+                      <CornerUpRight className="h-3.5 w-3.5" />
                     </button>
-                  )}
-
-                  {/* Forward Button */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setForwardingMsg(m);
-                      setForwardModalOpen(true);
-                    }}
-                    className="p-1 text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
-                    title="Переслать сообщение"
-                  >
-                    <CornerUpRight className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-
-                <div
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setContextMenu({
-                      x: e.clientX,
-                      y: e.clientY,
-                      message: m,
-                    });
-                  }}
-                  className={cn(
-                    "rounded-2xl px-4 py-2.5 text-xs shadow-xs leading-relaxed whitespace-pre-wrap break-words relative select-text",
-                    isOutgoing
-                      ? "bg-green-600 text-white rounded-tr-none"
-                      : "bg-white text-slate-800 border border-slate-200/80 rounded-tl-none"
-                  )}
-                >
-                  {/* AUDIO MESSAGE */}
-                  {m.mediaType === "AUDIO" || (m.mediaUrl && (m.text?.includes("🎤") || m.mediaUrl.includes("audio"))) ? (
-                    <AudioMessagePlayer src={m.mediaUrl || ""} isOutgoing={isOutgoing} />
-                  ) : null}
-
-                  {/* IMAGE MESSAGE */}
-                  {(m.mediaType === "IMAGE" || (m.mediaUrl && !m.mediaUrl.includes("audio") && !m.mediaUrl.includes("video") && (m.mediaType as any) !== "DOCUMENT" && /\.(jpe?g|png|gif|webp|svg|bmp)(?:\?.*)?$/i.test(m.mediaUrl))) ? (
-                    <div
-                      className="mb-2 rounded-xl overflow-hidden border border-black/10 cursor-pointer hover:opacity-95 transition-opacity"
-                      onClick={() => setLightbox({ src: m.mediaUrl!, alt: "Изображение из чата" })}
-                    >
-                      <img src={m.mediaUrl!} alt="Вложение" className="max-h-64 object-cover w-full rounded-xl" referrerPolicy="no-referrer" />
-                    </div>
-                  ) : null}
-
-                  {/* VIDEO MESSAGE */}
-                  {m.mediaType === "VIDEO" || (m.mediaUrl && m.mediaUrl.includes("video")) ? (
-                    <div
-                      className="mb-2 rounded-xl overflow-hidden border border-black/10 relative group cursor-pointer"
-                      onClick={() => setLightbox({ src: m.mediaUrl!, isVideo: true })}
-                    >
-                      <video src={m.mediaUrl!} className="max-h-64 object-cover w-full rounded-xl" />
-                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center group-hover:bg-black/50 transition-colors">
-                        <div className="h-10 w-10 rounded-full bg-white/90 text-black flex items-center justify-center shadow-lg">
-                          <Play className="h-5 w-5 fill-current ml-0.5" />
-                        </div>
-                      </div>
-                    </div>
-                  ) : null}
-
-                  {/* DOCUMENT MESSAGE */}
-                  {((m.mediaType as any) === "DOCUMENT" || (m.mediaUrl && ((m.mediaType as any) === "DOCUMENT" || /\.(pdf|docx?|xlsx?|pptx?|zip|rar|tar|txt|csv)(?:\?.*)?$/i.test(m.mediaUrl)))) ? (
-                    (() => {
-                      const filename = m.fileName || (m.mediaUrl?.startsWith("data:") ? "Документ.pdf" : m.mediaUrl?.split("/").pop()?.split("?")[0]) || "Скачать файл";
-                      const isPdf = !!(
-                        filename.toLowerCase().endsWith(".pdf") ||
-                        m.fileName?.toLowerCase().endsWith(".pdf") ||
-                        m.mediaUrl?.toLowerCase().includes(".pdf") ||
-                        m.mediaUrl?.startsWith("data:application/pdf") ||
-                        m.mediaUrl?.startsWith("data:application/x-pdf") ||
-                        (m.mediaUrl?.startsWith("data:") && m.mediaUrl?.includes("JVBERi0"))
-                      );
-                      const rawUrl = m.mediaUrl || "";
-                      const safeUrl = rawUrl.includes("mmg.whatsapp.net")
-                        ? `/api/whatsapp/media?id=${encodeURIComponent(m.id)}&jid=${encodeURIComponent(conversation?.remoteJid || "")}&filename=${encodeURIComponent(filename)}`
-                        : rawUrl;
-                      const downloadUrl = safeUrl.startsWith("/api/whatsapp/media")
-                        ? (safeUrl.includes("download=1") ? safeUrl : `${safeUrl}&download=1`)
-                        : safeUrl;
-                      
-                      if (isPdf) {
-                        return (
-                          <div
-                            onClick={() => setLightbox({ src: safeUrl, isPdf: true })}
-                            className="flex items-center gap-2 p-2 rounded-lg bg-black/10 hover:bg-black/15 transition-colors mb-1 text-current font-medium cursor-pointer"
-                          >
-                            <FileText className="h-4 w-4 shrink-0" />
-                            <span className="truncate flex-1 hover:underline">{filename}</span>
-                            <a
-                              href={downloadUrl || "#"}
-                              download={filename}
-                              target="_blank"
-                              rel="noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="p-1 hover:bg-black/15 rounded transition-colors"
-                              title="Скачать"
-                            >
-                              <Download className="h-3.5 w-3.5 shrink-0" />
-                            </a>
-                          </div>
-                        );
-                      }
-                      
-                      return (
-                        <a
-                          href={downloadUrl || "#"}
-                          download={filename}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="flex items-center gap-2 p-2 rounded-lg bg-black/10 hover:bg-black/15 transition-colors mb-1 text-current font-medium"
-                        >
-                          <FileText className="h-4 w-4 shrink-0" />
-                          <span className="truncate flex-1">{filename}</span>
-                          <Download className="h-3.5 w-3.5 shrink-0" />
-                        </a>
-                      );
-                    })()
-                  ) : null}
-
-                  {m.text ? <p>{m.text}</p> : (!m.mediaUrl && <p className="italic text-slate-400 font-medium">[Сообщение]</p>)}
-
-                  {/* Reaction badge */}
-                  {reaction && (
-                    <div className="absolute -bottom-2 right-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-full px-1.5 py-0.5 text-[11px] shadow-sm font-semibold leading-none flex items-center gap-0.5">
-                      <span>{reaction}</span>
-                    </div>
-                  )}
+                  </div>
 
                   <div
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setContextMenu({
+                        x: e.clientX,
+                        y: e.clientY,
+                        message: m,
+                      });
+                    }}
                     className={cn(
-                      "flex items-center gap-1 mt-1 text-[10px] justify-end",
-                      isOutgoing ? "text-green-100" : "text-slate-400"
+                      "rounded-2xl px-4 py-2.5 text-xs shadow-xs leading-relaxed whitespace-pre-wrap break-words relative select-text",
+                      isOutgoing
+                        ? "bg-green-600 text-white rounded-tr-none"
+                        : "bg-white text-slate-800 border border-slate-200/80 rounded-tl-none"
                     )}
                   >
-                    {m.isEdited && (
-                      <span className="italic opacity-80 mr-0.5">изменено</span>
+                    {/* AUDIO MESSAGE */}
+                    {m.mediaType === "AUDIO" || (m.mediaUrl && (m.text?.includes("🎤") || m.mediaUrl.includes("audio"))) ? (
+                      <AudioMessagePlayer src={m.mediaUrl || ""} isOutgoing={isOutgoing} />
+                    ) : null}
+
+                    {/* IMAGE MESSAGE */}
+                    {(m.mediaType === "IMAGE" || (m.mediaUrl && !m.mediaUrl.includes("audio") && !m.mediaUrl.includes("video") && (m.mediaType as any) !== "DOCUMENT" && /\.(jpe?g|png|gif|webp|svg|bmp)(?:\?.*)?$/i.test(m.mediaUrl))) ? (
+                      <div
+                        className="mb-2 rounded-xl overflow-hidden border border-black/10 cursor-pointer hover:opacity-95 transition-opacity"
+                        onClick={() => setLightbox({ src: m.mediaUrl!, alt: "Изображение из чата" })}
+                      >
+                        <img src={m.mediaUrl!} alt="Вложение" className="max-h-64 object-cover w-full rounded-xl" referrerPolicy="no-referrer" />
+                      </div>
+                    ) : null}
+
+                    {/* VIDEO MESSAGE */}
+                    {m.mediaType === "VIDEO" || (m.mediaUrl && m.mediaUrl.includes("video")) ? (
+                      <div
+                        className="mb-2 rounded-xl overflow-hidden border border-black/10 relative group cursor-pointer"
+                        onClick={() => setLightbox({ src: m.mediaUrl!, isVideo: true })}
+                      >
+                        <video src={m.mediaUrl!} className="max-h-64 object-cover w-full rounded-xl" />
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center group-hover:bg-black/50 transition-colors">
+                          <div className="h-10 w-10 rounded-full bg-white/90 text-black flex items-center justify-center shadow-lg">
+                            <Play className="h-5 w-5 fill-current ml-0.5" />
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {/* DOCUMENT MESSAGE */}
+                    {((m.mediaType as any) === "DOCUMENT" || (m.mediaUrl && ((m.mediaType as any) === "DOCUMENT" || /\.(pdf|docx?|xlsx?|pptx?|zip|rar|tar|txt|csv)(?:\?.*)?$/i.test(m.mediaUrl)))) ? (
+                      (() => {
+                        const filename = m.fileName || (m.mediaUrl?.startsWith("data:") ? "Документ.pdf" : m.mediaUrl?.split("/").pop()?.split("?")[0]) || "Скачать файл";
+                        const isPdf = !!(
+                          filename.toLowerCase().endsWith(".pdf") ||
+                          m.fileName?.toLowerCase().endsWith(".pdf") ||
+                          m.mediaUrl?.toLowerCase().includes(".pdf") ||
+                          m.mediaUrl?.startsWith("data:application/pdf") ||
+                          m.mediaUrl?.startsWith("data:application/x-pdf") ||
+                          (m.mediaUrl?.startsWith("data:") && m.mediaUrl?.includes("JVBERi0"))
+                        );
+                        const rawUrl = m.mediaUrl || "";
+                        const safeUrl = rawUrl.includes("mmg.whatsapp.net")
+                          ? `/api/whatsapp/media?id=${encodeURIComponent(m.id)}&jid=${encodeURIComponent(conversation?.remoteJid || "")}&filename=${encodeURIComponent(filename)}`
+                          : rawUrl;
+                        const downloadUrl = safeUrl.startsWith("/api/whatsapp/media")
+                          ? (safeUrl.includes("download=1") ? safeUrl : `${safeUrl}&download=1`)
+                          : safeUrl;
+                        
+                        if (isPdf) {
+                          return (
+                            <div
+                              onClick={() => setLightbox({ src: safeUrl, isPdf: true })}
+                              className="flex items-center gap-2 p-2 rounded-lg bg-black/10 hover:bg-black/15 transition-colors mb-1 text-current font-medium cursor-pointer"
+                            >
+                              <FileText className="h-4 w-4 shrink-0" />
+                              <span className="truncate flex-1 hover:underline">{filename}</span>
+                              <a
+                                href={downloadUrl || "#"}
+                                download={filename}
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="p-1 hover:bg-black/15 rounded transition-colors"
+                                title="Скачать"
+                              >
+                                <Download className="h-3.5 w-3.5 shrink-0" />
+                              </a>
+                            </div>
+                          );
+                        }
+                        
+                        return (
+                          <a
+                            href={downloadUrl || "#"}
+                            download={filename}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center gap-2 p-2 rounded-lg bg-black/10 hover:bg-black/15 transition-colors mb-1 text-current font-medium"
+                          >
+                            <FileText className="h-4 w-4 shrink-0" />
+                            <span className="truncate flex-1">{filename}</span>
+                            <Download className="h-3.5 w-3.5 shrink-0" />
+                          </a>
+                        );
+                      })()
+                    ) : null}
+
+                    {m.text ? <p>{m.text}</p> : (!m.mediaUrl && <p className="italic text-slate-400 font-medium">[Сообщение]</p>)}
+
+                    {/* Reaction badge */}
+                    {allReactions.length > 0 && (
+                      <div className="absolute -bottom-2.5 right-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-full px-1.5 py-0.5 text-[11px] shadow-sm font-semibold leading-none flex items-center gap-0.5 z-10">
+                        {allReactions.map((r, idx) => (
+                          <span key={idx}>{r}</span>
+                        ))}
+                      </div>
                     )}
-                    <span>{format(new Date(m.createdAt), "HH:mm", { locale: ru })}</span>
-                    {isOutgoing && <CheckCheck className="h-3 w-3 text-white" />}
+
+                    <div
+                      className={cn(
+                        "flex items-center gap-1.5 mt-1 text-[10px] justify-end select-none",
+                        isOutgoing ? "text-green-100" : "text-slate-400"
+                      )}
+                    >
+                      {m.isEdited && (
+                        <span className="italic font-medium opacity-90 text-[9px] bg-black/10 dark:bg-white/10 px-1 py-0.2 rounded">
+                          Изменено
+                        </span>
+                      )}
+                      <span>{format(new Date(m.createdAt), "HH:mm", { locale: ru })}</span>
+                      {isOutgoing && <CheckCheck className="h-3 w-3 text-white" />}
+                    </div>
                   </div>
                 </div>
               </div>

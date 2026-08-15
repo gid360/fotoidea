@@ -76,7 +76,40 @@ export async function GET(
           }
         }
 
-        // Process messages and decode audio/image/video media to base64
+        // 1. Build reactions map from standalone reaction messages or attached reaction fields
+        const reactionsMap = new Map<string, string[]>();
+        for (const m of rawMsgs) {
+          const msg = m.message || m;
+          if (msg?.reactionMessage?.key?.id && msg?.reactionMessage?.text) {
+            const targetId = msg.reactionMessage.key.id;
+            const emoji = msg.reactionMessage.text;
+            if (emoji) {
+              const list = reactionsMap.get(targetId) || [];
+              if (!list.includes(emoji)) list.push(emoji);
+              reactionsMap.set(targetId, list);
+            }
+          } else if (Array.isArray(m.reactions)) {
+            for (const r of m.reactions) {
+              const targetId = m.id || m.key?.id;
+              const emoji = typeof r === "string" ? r : (r.text || r.emoji);
+              if (targetId && emoji) {
+                const list = reactionsMap.get(targetId) || [];
+                if (!list.includes(emoji)) list.push(emoji);
+                reactionsMap.set(targetId, list);
+              }
+            }
+          } else if (m.reactions && typeof m.reactions === "object" && m.reactions.text) {
+            const targetId = m.reactions.key?.id || m.id || m.key?.id;
+            const emoji = m.reactions.text;
+            if (targetId && emoji) {
+              const list = reactionsMap.get(targetId) || [];
+              if (!list.includes(emoji)) list.push(emoji);
+              reactionsMap.set(targetId, list);
+            }
+          }
+        }
+
+        // 2. Process messages
         const processedMsgs = await Promise.all(
           rawMsgs.map(async (m: any) => {
             const msg = m.message || m;
@@ -86,6 +119,11 @@ export async function GET(
               || msg?.documentWithCaptionMessage?.message
               || msg?.editedMessage?.message?.protocolMessage?.editedMessage
               || msg;
+
+            // Ignore standalone reaction notifications as regular chat bubbles
+            if (realMsg?.reactionMessage && !realMsg?.conversation && !realMsg?.extendedTextMessage) {
+              return null;
+            }
 
             let mediaType: "IMAGE" | "VIDEO" | "AUDIO" | "DOCUMENT" | null = null;
             let fileName: string | null = null;
@@ -120,8 +158,6 @@ export async function GET(
               text = "👤 Карточка контакта";
             } else if (realMsg?.locationMessage || realMsg?.liveLocationMessage) {
               text = "📍 Геолокация";
-            } else if (realMsg?.reactionMessage) {
-              text = realMsg.reactionMessage.text || "Реакция";
             } else if (realMsg?.pollCreationMessage) {
               text = `📊 Опрос: ${realMsg.pollCreationMessage.name || ""}`;
             } else if (realMsg?.protocolMessage) {
@@ -198,11 +234,15 @@ export async function GET(
               msg?.protocolMessage?.type === "MESSAGE_EDIT" ||
               msg?.protocolMessage?.type === 14 ||
               m?.protocolMessage?.type === "MESSAGE_EDIT" ||
-              m?.protocolMessage?.type === 14
+              m?.protocolMessage?.type === 14 ||
+              (Array.isArray(m.MessageUpdate) && m.MessageUpdate.some((u: any) => u.status === "EDITED" || u.updateType === "EDIT"))
             );
 
+            const msgId = m.id || m.key?.id || Math.random().toString();
+            const msgReactions = reactionsMap.get(msgId) || (m.reactions?.text ? [m.reactions.text] : []);
+
             return {
-              id: m.id || m.key?.id || Math.random().toString(),
+              id: msgId,
               conversationId: id,
               direction: m.key?.fromMe ? "OUTGOING" : "INCOMING",
               text: text || "",
@@ -212,12 +252,13 @@ export async function GET(
               status: m.status || "SENT",
               createdAt: ts,
               isEdited,
+              reactions: msgReactions.filter(Boolean),
               author: null,
             };
           })
         );
 
-        messages = processedMsgs.reverse();
+        messages = (processedMsgs.filter(Boolean) as any[]).reverse();
       }
 
       // 3. Query phonebook contact if pushName is missing

@@ -45,6 +45,7 @@ export interface MessageDto {
   status: "PENDING" | "SENT" | "DELIVERED" | "READ" | "FAILED";
   createdAt: string;
   isEdited?: boolean;
+  reactions?: string[] | null;
   author: { id: string; name: string } | null;
   replyToMessage?: {
     id: string;
