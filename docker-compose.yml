@@ -1,6 +1,22 @@
-version: '3.8'
-
 services:
+  db:
+    image: postgres:17-alpine
+    container_name: fotoidea-crm-db
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    environment:
+      POSTGRES_USER: fotoidea
+      POSTGRES_PASSWORD: fotoidea_db_secret_pass_2026
+      POSTGRES_DB: fotoidea
+    volumes:
+      - ./pg_data:/var/lib/postgresql/data
+    networks:
+      - crm-net
+
   app:
     build:
       context: .
@@ -20,6 +36,8 @@ services:
       - PORT=3000
     networks:
       - crm-net
+    depends_on:
+      - db
 
 networks:
   crm-net:
