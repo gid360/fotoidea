@@ -210,12 +210,6 @@ export function ClientPanel({
                 <CheckCircle2 className="h-3 w-3 text-indigo-600" />
                 Визитов: {visitedCount}
               </a>
-
-              {client.source && (
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                  {client.source}
-                </Badge>
-              )}
             </div>
           </div>
         </div>
