@@ -228,9 +228,10 @@ export async function GET(
               ? new Date(m.messageTimestamp * 1000).toISOString()
               : (m.createdAt || new Date().toISOString());
 
-            const msgId = m.id || m.key?.id || Math.random().toString();
+            const msgId = m.key?.id || m.id || Math.random().toString();
             const isEdited = Boolean(
               editedTargetIds.has(msgId) ||
+              (m.id && editedTargetIds.has(m.id)) ||
               m.isEdited ||
               m.edited ||
               msg?.editedMessage ||
@@ -243,7 +244,7 @@ export async function GET(
               (Array.isArray(m.MessageUpdate) && m.MessageUpdate.some((u: any) => u.status === "EDITED" || u.updateType === "EDIT"))
             );
 
-            const msgReactions = reactionsMap.get(msgId) || (m.reactions?.text ? [m.reactions.text] : []);
+            const msgReactions = reactionsMap.get(msgId) || (m.id ? reactionsMap.get(m.id) : null) || (m.reactions?.text ? [m.reactions.text] : []);
 
             return {
               id: msgId,
