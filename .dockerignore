@@ -1,0 +1,8 @@
+node_modules
+.next
+.git
+pg_data
+*.sql
+*.log
+.env
+.env*.local
