@@ -144,36 +144,36 @@ export function ClientsClient() {
   return (
     <div className="flex flex-col h-full">
       {/* Шапка */}
-      <div className="p-4 border-b bg-background shrink-0 space-y-3">
-        <div className="flex items-center justify-between">
+      <div className="p-2.5 sm:p-4 border-b bg-background shrink-0 space-y-2 sm:space-y-3">
+        <div className="flex items-center justify-between gap-2">
           <div>
-            <h1 className="text-xl font-bold">База клиентов</h1>
-            <p className="text-sm text-muted-foreground">{total} клиентов</p>
+            <h1 className="text-base sm:text-xl font-bold leading-tight">База клиентов</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground">{total} клиентов</p>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => setAltegioOpen(true)}>
-              <Download className="h-4 w-4 mr-1.5" /> Импорт из Altegio
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <Button variant="outline" size="sm" className="h-8 px-2.5 text-xs" onClick={() => setAltegioOpen(true)}>
+              <Download className="h-3.5 w-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Импорт из Altegio</span><span className="sm:hidden">Altegio</span>
             </Button>
-            <Button onClick={() => setCreateOpen(true)}>
-              <Plus className="h-4 w-4 mr-1.5" /> Новый клиент
+            <Button size="sm" className="h-8 px-2.5 text-xs" onClick={() => setCreateOpen(true)}>
+              <Plus className="h-3.5 w-3.5 mr-1" /> <span className="hidden sm:inline">Новый клиент</span><span className="sm:hidden">Клиент</span>
             </Button>
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-2">
+        <div className="flex flex-col sm:flex-row gap-1.5 sm:gap-2">
           <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
               placeholder="Поиск по имени, телефону..."
-              className="pl-9 pr-9"
+              className="pl-8 pr-8 h-8 text-xs sm:h-9 sm:text-sm"
               value={search}
               onChange={e => handleSearchChange(e.target.value)}
             />
             {isFetching && (
-              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-primary" />
+              <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-primary" />
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
             <select
               value={`${sortBy}-${sortOrder}`}
               onChange={e => {
@@ -182,27 +182,26 @@ export function ClientsClient() {
                 setSortOrder(o);
                 setPage(1);
               }}
-              className="h-9 rounded-md border bg-background px-2.5 text-xs font-medium focus:outline-none md:hidden shrink-0"
+              className="h-8 rounded-md border bg-background px-2 text-xs font-medium focus:outline-none md:hidden shrink-0"
             >
-              <option value="name-asc">Сортировка: Имя (А-Я)</option>
-              <option value="name-desc">Сортировка: Имя (Я-А)</option>
-              <option value="totalSales-desc">Сортировка: Продано (сначала больше)</option>
-              <option value="totalSales-asc">Сортировка: Продано (сначала меньше)</option>
-              <option value="visits-desc">Сортировка: Визиты (сначала много)</option>
-              <option value="visits-asc">Сортировка: Визиты (сначала мало)</option>
-              <option value="lastVisit-desc">Сортировка: Посл. визит (свежие)</option>
-              <option value="firstVisit-desc">Сортировка: Первый визит (свежие)</option>
+              <option value="name-asc">Имя (А-Я)</option>
+              <option value="name-desc">Имя (Я-А)</option>
+              <option value="totalSales-desc">Продано (больше)</option>
+              <option value="totalSales-asc">Продано (меньше)</option>
+              <option value="visits-desc">Визиты (много)</option>
+              <option value="visits-asc">Визиты (мало)</option>
+              <option value="lastVisit-desc">Посл. визит</option>
             </select>
-            <div className="flex gap-1 overflow-x-auto pb-0.5">
+            <div className="flex gap-1 overflow-x-auto pb-0.5 no-scrollbar shrink-0">
               {tags.map(t => (
                 <button
                   key={t.value}
                   onClick={() => handleTagFilterChange(t.value)}
                   className={cn(
-                    "px-3 py-1.5 text-sm rounded-md border transition-colors whitespace-nowrap",
+                    "px-2.5 py-1 text-xs rounded-md border transition-colors whitespace-nowrap shrink-0",
                     tagFilter === t.value
-                      ? "bg-foreground text-background border-foreground"
-                      : "hover:bg-muted"
+                      ? "bg-foreground text-background border-foreground font-semibold"
+                      : "hover:bg-muted bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
                   )}
                 >
                   {t.label}
@@ -329,12 +328,16 @@ export function ClientsClient() {
 
       {/* Пагинация */}
       {total > 0 && (
-        <div className="p-3 border-t bg-background shrink-0 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm">
-          <div className="flex items-center gap-3 text-muted-foreground text-xs sm:text-sm">
-            <span>
-              Показано {Math.min((page - 1) * limit + 1, total)}–{Math.min(page * limit, total)} из {total} клиентов
+        <div className="px-3 py-2 border-t bg-background shrink-0 flex items-center justify-between gap-2 text-xs">
+          {/* Десктопная полная инфо / Мобильная краткая */}
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <span className="hidden sm:inline">
+              Показано {Math.min((page - 1) * limit + 1, total)}–{Math.min(page * limit, total)} из {total}
             </span>
-            <div className="flex items-center gap-1.5 border-l pl-3">
+            <span className="sm:hidden font-medium">
+              {total} клиентов
+            </span>
+            <div className="hidden sm:flex items-center gap-1.5 border-l pl-3">
               <span>На странице:</span>
               <select
                 value={limit}
@@ -342,7 +345,7 @@ export function ClientsClient() {
                   setLimit(Number(e.target.value));
                   setPage(1);
                 }}
-                className="h-8 rounded-md border bg-background px-2 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-ring"
+                className="h-7 rounded-md border bg-background px-1.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-ring"
               >
                 <option value={25}>25</option>
                 <option value={50}>50</option>
@@ -356,26 +359,26 @@ export function ClientsClient() {
             <Button
               variant="outline"
               size="icon"
-              className="h-8 w-8"
+              className="h-7 w-7 hidden sm:flex"
               onClick={() => setPage(1)}
               disabled={page === 1 || isLoading}
               title="Первая страница"
             >
-              <ChevronsLeft className="h-4 w-4" />
+              <ChevronsLeft className="h-3.5 w-3.5" />
             </Button>
             <Button
               variant="outline"
               size="icon"
-              className="h-8 w-8"
+              className="h-7 w-7"
               onClick={() => setPage(p => Math.max(1, p - 1))}
               disabled={page === 1 || isLoading}
               title="Предыдущая страница"
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="h-3.5 w-3.5" />
             </Button>
 
-            <div className="flex items-center gap-1.5 px-2 text-xs font-medium">
-              <span>Стр.</span>
+            <div className="flex items-center gap-1 px-1 text-xs font-medium">
+              <span className="hidden sm:inline">Стр.</span>
               <input
                 type="number"
                 min={1}
@@ -400,30 +403,30 @@ export function ClientsClient() {
                     setPageInput(String(page));
                   }
                 }}
-                className="h-8 w-14 rounded-md border bg-background px-1 text-center text-xs font-bold focus:outline-none focus:ring-1 focus:ring-ring"
+                className="h-7 w-11 sm:w-14 rounded-md border bg-background px-1 text-center text-xs font-bold focus:outline-none focus:ring-1 focus:ring-ring"
               />
-              <span>из {totalPages}</span>
+              <span className="text-muted-foreground">/ {totalPages}</span>
             </div>
 
             <Button
               variant="outline"
               size="icon"
-              className="h-8 w-8"
+              className="h-7 w-7"
               onClick={() => setPage(p => Math.min(totalPages, p + 1))}
               disabled={page >= totalPages || isLoading}
               title="Следующая страница"
             >
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="h-3.5 w-3.5" />
             </Button>
             <Button
               variant="outline"
               size="icon"
-              className="h-8 w-8"
+              className="h-7 w-7 hidden sm:flex"
               onClick={() => setPage(totalPages)}
               disabled={page >= totalPages || isLoading}
               title="Последняя страница"
             >
-              <ChevronsRight className="h-4 w-4" />
+              <ChevronsRight className="h-3.5 w-3.5" />
             </Button>
           </div>
         </div>
