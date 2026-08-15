@@ -28,15 +28,11 @@ const DEFAULT_FUNNEL_STAGES: FunnelStageDto[] = [
 
 export function ClientPanel({
   conversation,
-  funnelStages = [],
-  onChanged,
   onClose,
-}: {
-  conversation: ConversationDetailDto;
-  funnelStages: FunnelStageDto[];
-  onChanged: () => void;
-  onClose?: () => void;
-}) {
+  onBack,
+  onChanged,
+  funnelStages = [],
+}: ClientPanelProps) {
   const client = conversation.client;
   const [noteText, setNoteText] = useState("");
   const [addingNote, setAddingNote] = useState(false);
@@ -135,7 +131,7 @@ export function ClientPanel({
   }
 
   return (
-    <div className="w-80 border-l bg-background flex flex-col h-full shrink-0 overflow-y-auto min-h-0 text-xs">
+    <div className="w-full md:w-80 border-l bg-background flex flex-col h-full shrink-0 overflow-y-auto min-h-0 text-xs">
       {/* Lightbox for Avatar */}
       {lightboxOpen && client.avatarUrl && (
         <AvatarLightbox
@@ -147,7 +143,18 @@ export function ClientPanel({
 
       {/* Header */}
       <div className="p-3 border-b flex items-center justify-between bg-muted/20 shrink-0">
-        <span className="font-semibold text-slate-700">Карточка клиента</span>
+        <div className="flex items-center gap-2">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="p-1 -ml-1 rounded-lg text-slate-600 hover:bg-slate-200/60 md:hidden flex items-center justify-center"
+              title="Назад к чату"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+          )}
+          <span className="font-semibold text-slate-700">Карточка клиента</span>
+        </div>
         {onClose && (
           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose}>
             <X className="h-3.5 w-3.5" />

@@ -356,27 +356,29 @@ export function CrmClient() {
     </div>
   );
 
+  const [mobileStage, setMobileStage] = useState<string>("ALL");
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="p-4 border-b bg-background shrink-0 space-y-3">
-        <div className="flex items-center justify-between">
+      <div className="p-3 sm:p-4 border-b bg-background shrink-0 space-y-2.5 sm:space-y-3">
+        <div className="flex items-center justify-between gap-2">
           <div>
-            <h1 className="text-xl font-bold">Воронка продаж</h1>
-            <p className="text-sm text-muted-foreground">{totalActive} активных · {leads.length} всего</p>
+            <h1 className="text-lg sm:text-xl font-bold">Воронка продаж</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground">{totalActive} активных · {leads.length} всего</p>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => setStagesOpen(true)}>
-              <Settings2 className="h-4 w-4 mr-1.5" />Этапы
+          <div className="flex gap-1.5 sm:gap-2">
+            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setStagesOpen(true)}>
+              <Settings2 className="h-3.5 w-3.5 mr-1" />Этапы
             </Button>
-            <Button size="sm" onClick={() => { setForm({ ...EMPTY }); setCreateOpen(true); }}>
-              <Plus className="h-4 w-4 mr-1.5" />Новый лид
+            <Button size="sm" className="h-8 text-xs" onClick={() => { setForm({ ...EMPTY }); setCreateOpen(true); }}>
+              <Plus className="h-3.5 w-3.5 mr-1" />Новый лид
             </Button>
           </div>
         </div>
 
         {/* Source filter tabs */}
-        <div className="flex gap-1.5 flex-wrap">
+        <div className="flex gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
           {SOURCE_FILTERS.map(sf => {
             const Icon = sf.icon;
             const cnt  = sf.value === "ALL" ? leads.length : (sourceCounts[sf.value] ?? 0);
@@ -384,19 +386,50 @@ export function CrmClient() {
               <button key={sf.value}
                 onClick={() => setSourceFilter(sf.value)}
                 className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors",
+                  "flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors whitespace-nowrap shrink-0",
                   sourceFilter === sf.value
-                    ? "bg-foreground text-background border-foreground"
-                    : "hover:bg-muted border-transparent"
+                    ? "bg-foreground text-background border-foreground font-semibold"
+                    : "hover:bg-muted border-transparent bg-slate-50 dark:bg-slate-800"
                 )}>
                 {Icon && <Icon className={cn("h-3.5 w-3.5", sourceFilter !== sf.value && sf.color)} />}
                 {sf.label}
                 {cnt > 0 && (
                   <span className={cn(
-                    "text-[10px] px-1.5 py-0.5 rounded-full font-bold",
+                    "text-[10px] px-1.5 py-0.2 rounded-full font-bold",
                     sourceFilter === sf.value ? "bg-white/20" : "bg-muted"
                   )}>{cnt}</span>
                 )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Mobile Stage Selector */}
+        <div className="flex gap-1.5 overflow-x-auto pb-1 md:hidden no-scrollbar">
+          <button
+            onClick={() => setMobileStage("ALL")}
+            className={cn(
+              "px-2.5 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-colors shrink-0",
+              mobileStage === "ALL" ? "bg-primary text-white font-semibold" : "bg-slate-100 dark:bg-slate-800 text-slate-600"
+            )}
+          >
+            Все ({filteredLeads.length})
+          </button>
+          {columns.map(col => {
+            const count = byStatus(col.status).length;
+            const active = mobileStage === col.status;
+            return (
+              <button
+                key={col.status}
+                onClick={() => setMobileStage(col.status)}
+                className={cn(
+                  "px-2.5 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-colors flex items-center gap-1.5 shrink-0",
+                  active ? "text-white font-semibold shadow-2xs" : "bg-slate-100 dark:bg-slate-800 text-slate-700"
+                )}
+                style={active ? { backgroundColor: col.color } : {}}
+              >
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: col.color }} />
+                {col.label} ({count})
               </button>
             );
           })}
@@ -405,26 +438,28 @@ export function CrmClient() {
 
       {/* Kanban board */}
       <div className="flex-1 overflow-x-auto overflow-y-hidden">
-        <div className="flex gap-3 p-4 h-full" style={{ minWidth: `${columns.length * 220}px` }}>
-          {columns.map(col => {
+        <div className="flex gap-3 p-3 sm:p-4 h-full" style={{ minWidth: mobileStage === "ALL" ? `${columns.length * 240}px` : "100%" }}>
+          {columns.filter(col => mobileStage === "ALL" || col.status === mobileStage).map(col => {
             const colLeads = byStatus(col.status);
-            // Build bg from hex color
-            const bg = `${col.color}18`; // ~10% opacity
+            const bg = `${col.color}18`;
 
             return (
               <div key={col.status}
-                className="flex flex-col w-52 shrink-0 h-full"
+                className={cn(
+                  "flex flex-col h-full",
+                  mobileStage !== "ALL" ? "w-full md:w-56" : "w-56 shrink-0"
+                )}
                 onDragOver={e => e.preventDefault()}
                 onDrop={() => onDrop(col.status)}
               >
                 {/* Column header */}
-                <div className="flex items-center justify-between px-3 py-2 rounded-lg mb-2"
+                <div className="flex items-center justify-between px-3 py-2 rounded-lg mb-2 shadow-2xs"
                   style={{ background: bg }}>
                   <div className="flex items-center gap-2">
-                    <div className="h-2 w-2 rounded-full shrink-0" style={{ background: col.color }} />
+                    <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: col.color }} />
                     <span className="text-xs font-semibold" style={{ color: col.color }}>{col.label}</span>
                   </div>
-                  <span className="text-xs font-bold px-1.5 py-0.5 rounded-full bg-white/70"
+                  <span className="text-xs font-bold px-1.5 py-0.5 rounded-full bg-white/80 shadow-2xs"
                     style={{ color: col.color }}>
                     {colLeads.length}
                   </span>

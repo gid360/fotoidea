@@ -173,10 +173,12 @@ export function ChatPanel({
   conversation,
   onRefresh,
   onOpenClientPanel,
+  onBack,
 }: {
   conversation: ConversationDetailDto;
   onRefresh: () => void;
   onOpenClientPanel?: () => void;
+  onBack?: () => void;
 }) {
   const [inputText, setInputText] = useState("");
   const [sending, setSending] = useState(false);
@@ -475,24 +477,35 @@ export function ChatPanel({
       )}
 
       {/* Top Header */}
-      <div className="p-3 border-b bg-background flex items-center justify-between shrink-0 shadow-2xs">
-        <div className="flex items-center gap-3 min-w-0">
+      <div className="p-2.5 sm:p-3 border-b bg-background flex items-center justify-between shrink-0 shadow-2xs">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="p-1.5 -ml-1 rounded-lg text-slate-600 hover:bg-slate-100 md:hidden flex items-center justify-center shrink-0"
+              title="Назад к списку диалогов"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+          )}
           <div
-            className="relative cursor-pointer hover:opacity-90 transition-opacity"
+            className="relative cursor-pointer hover:opacity-90 transition-opacity shrink-0"
             onClick={() => client.avatarUrl && setLightbox({ src: client.avatarUrl, alt: clientDisplayName(client) })}
           >
             <Avatar src={client.avatarUrl} name={clientDisplayName(client)} size="md" />
             <ChannelBadge channel={client.channel} className="absolute -bottom-1 -right-1" />
           </div>
-          <div className="min-w-0 cursor-pointer" onClick={onOpenClientPanel}>
-            <div className="flex items-center gap-2">
-              <h2 className="font-bold text-sm truncate text-slate-900">{clientDisplayName(client)}</h2>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 font-mono text-slate-600">
-                {formatPhonePretty(client.phone)}
-              </span>
+          <div className="min-w-0 cursor-pointer flex-1" onClick={onOpenClientPanel}>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <h2 className="font-bold text-xs sm:text-sm truncate text-slate-900">{clientDisplayName(client)}</h2>
+              {formatPhonePretty(client.phone) && (
+                <span className="text-[10px] sm:text-xs px-1.5 py-0.2 rounded-full bg-slate-100 font-mono text-slate-600 truncate">
+                  {formatPhonePretty(client.phone)}
+                </span>
+              )}
             </div>
-            <p className="text-[11px] text-muted-foreground truncate mt-0.5">
-              Нажмите для просмотра карточки клиента
+            <p className="text-[10px] sm:text-[11px] text-muted-foreground truncate">
+              Инфо о клиенте
             </p>
           </div>
         </div>

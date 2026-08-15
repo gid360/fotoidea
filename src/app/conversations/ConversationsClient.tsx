@@ -250,10 +250,17 @@ export function ConversationsClient() {
     }
   };
 
+  const [mobileView, setMobileView] = useState<"list" | "chat" | "client">("list");
+
   return (
     <div className="flex h-full w-full overflow-hidden bg-background">
-      {/* COLUMN 1: LEFT CONVERSATIONS LIST (320px) */}
-      <div className="w-80 border-r flex flex-col bg-background shrink-0 min-h-0">
+      {/* COLUMN 1: LEFT CONVERSATIONS LIST */}
+      <div
+        className={cn(
+          "w-full md:w-80 border-r flex flex-col bg-background shrink-0 min-h-0",
+          mobileView !== "list" ? "hidden md:flex" : "flex"
+        )}
+      >
         {/* Header & Filter Bar */}
         <div className="p-3 border-b space-y-2 shrink-0">
           <div className="flex items-center justify-between">
@@ -338,7 +345,10 @@ export function ConversationsClient() {
                 return (
                   <div
                     key={c.id}
-                    onClick={() => setSelectedId(c.id)}
+                    onClick={() => {
+                      setSelectedId(c.id);
+                      setMobileView("chat");
+                    }}
                     onMouseEnter={() => prefetchConversation(c.id)}
                     className={cn(
                       "p-3 cursor-pointer flex items-start gap-3 transition-all duration-500 relative group overflow-hidden",
@@ -430,32 +440,54 @@ export function ConversationsClient() {
       </div>
 
       {/* COLUMN 2: CENTER CHAT PANEL */}
-      {detail && detail.id === activeSelectedId ? (
-        <ChatPanel
-          conversation={detail}
-          onRefresh={refetchDetail}
-          onOpenClientPanel={() => setShowClientPanel(!showClientPanel)}
-        />
-      ) : activeSelectedId && isDetailLoading ? (
-        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-muted-foreground bg-slate-50">
-          <RefreshCw className="h-7 w-7 animate-spin text-primary mb-2" />
-          <p className="font-medium text-xs text-slate-600">Загрузка переписки…</p>
-        </div>
-      ) : (
-        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-muted-foreground bg-slate-50">
-          <MessageCircle className="h-12 w-12 text-slate-300 mb-2" />
-          <p className="font-medium text-sm">Выберите диалог для просмотра сообщений</p>
-        </div>
-      )}
+      <div
+        className={cn(
+          "flex-1 flex flex-col min-w-0 h-full",
+          mobileView !== "chat" ? "hidden md:flex" : "flex"
+        )}
+      >
+        {detail && detail.id === activeSelectedId ? (
+          <ChatPanel
+            conversation={detail}
+            onRefresh={refetchDetail}
+            onBack={() => setMobileView("list")}
+            onOpenClientPanel={() => {
+              setShowClientPanel(true);
+              setMobileView("client");
+            }}
+          />
+        ) : activeSelectedId && isDetailLoading ? (
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-muted-foreground bg-slate-50">
+            <RefreshCw className="h-7 w-7 animate-spin text-primary mb-2" />
+            <p className="font-medium text-xs text-slate-600">Загрузка переписки…</p>
+          </div>
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-muted-foreground bg-slate-50">
+            <MessageCircle className="h-12 w-12 text-slate-300 mb-2" />
+            <p className="font-medium text-sm">Выберите диалог для просмотра сообщений</p>
+          </div>
+        )}
+      </div>
 
       {/* COLUMN 3: RIGHT CLIENT PANEL */}
-      {detail && detail.id === activeSelectedId && showClientPanel && (
-        <ClientPanel
-          conversation={detail}
-          funnelStages={funnelStages}
-          onChanged={handleRefreshAll}
-          onClose={() => setShowClientPanel(false)}
-        />
+      {detail && detail.id === activeSelectedId && (showClientPanel || mobileView === "client") && (
+        <div
+          className={cn(
+            "h-full shrink-0",
+            mobileView === "client" ? "flex w-full" : "hidden md:flex md:w-80"
+          )}
+        >
+          <ClientPanel
+            conversation={detail}
+            funnelStages={funnelStages}
+            onChanged={handleRefreshAll}
+            onBack={() => setMobileView("chat")}
+            onClose={() => {
+              setShowClientPanel(false);
+              setMobileView("chat");
+            }}
+          />
+        </div>
       )}
     </div>
   );
