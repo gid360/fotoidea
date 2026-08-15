@@ -11,6 +11,7 @@ RUN npm ci
 
 # 2. Build the application
 FROM base AS builder
+RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -23,6 +24,7 @@ RUN npm run build
 
 # 3. Production runner
 FROM base AS runner
+RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 
 ENV NODE_ENV production
