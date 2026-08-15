@@ -42,6 +42,10 @@ export const authOptions: NextAuthOptions = {
           const loginInput = (credentials.login as string).trim();
           const password = credentials.password as string;
           const normalizedPhone = normalizePhone(loginInput);
+          const rawDigits = loginInput.replace(/\D/g, "");
+          const formattedPhone1 = rawDigits.length === 11 ? `+7 ${rawDigits.slice(1, 4)} ${rawDigits.slice(4, 7)} ${rawDigits.slice(7, 9)} ${rawDigits.slice(9)}` : null;
+          const formattedPhone2 = rawDigits.length === 11 ? `+7 (${rawDigits.slice(1, 4)}) ${rawDigits.slice(4, 7)}-${rawDigits.slice(7, 9)}-${rawDigits.slice(9)}` : null;
+          const formattedPhone3 = rawDigits.length === 11 ? `+7 ${rawDigits.slice(1, 4)} ${rawDigits.slice(4, 7)} ${rawDigits.slice(7)}` : null;
 
           const user = await prisma.user.findFirst({
             where: {
@@ -49,9 +53,16 @@ export const authOptions: NextAuthOptions = {
               OR: [
                 { phone: loginInput },
                 { phone: normalizedPhone },
+                { phone: rawDigits },
+                ...(formattedPhone1 ? [{ phone: formattedPhone1 }] : []),
+                ...(formattedPhone2 ? [{ phone: formattedPhone2 }] : []),
+                ...(formattedPhone3 ? [{ phone: formattedPhone3 }] : []),
                 { email: loginInput.toLowerCase() },
               ],
             },
+            orderBy: [
+              { role: "asc" },
+            ],
           });
 
           if (!user || !user.passwordHash) return null;
