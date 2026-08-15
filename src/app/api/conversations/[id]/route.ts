@@ -174,50 +174,12 @@ export async function GET(
 
             let mediaUrl: string | null = null;
 
-            // Retrieve playable base64 from Evolution API if media exists
-            if (mediaType && (realMsg?.audioMessage || realMsg?.imageMessage || realMsg?.videoMessage || realMsg?.documentMessage)) {
-              try {
-                const bRes = await fetch(`${cleanServerUrl}/chat/getBase64FromMediaMessage/${wa.instanceName}`, {
-                  method: "POST",
-                  headers,
-                  body: JSON.stringify({
-                    message: m,
-                    convertToMp4: false,
-                  }),
-                  signal: AbortSignal.timeout(6000),
-                });
-                if (bRes.ok) {
-                  const bData = await bRes.json();
-                  const rawB64 = bData?.base64 || "";
-                  if (rawB64) {
-                    if (rawB64.startsWith("data:")) {
-                      mediaUrl = rawB64;
-                    } else if (mediaType === "AUDIO") {
-                      mediaUrl = `data:audio/ogg;codecs=opus;base64,${rawB64}`;
-                    } else if (mediaType === "IMAGE") {
-                      mediaUrl = `data:image/jpeg;base64,${rawB64}`;
-                    } else if (mediaType === "VIDEO") {
-                      mediaUrl = `data:video/mp4;base64,${rawB64}`;
-                    } else if (mediaType === "DOCUMENT") {
-                      let docMime = realMsg.documentMessage?.mimetype || "application/octet-stream";
-                      if (fileName?.toLowerCase().endsWith(".pdf") || rawB64.startsWith("JVBERi0")) {
-                        docMime = "application/pdf";
-                      }
-                      mediaUrl = `data:${docMime};base64,${rawB64}`;
-                    }
-                  }
-                }
-              } catch (e) {
-                console.error("Failed to decode media base64:", e);
-              }
-
-              // Fallback to proxy route if immediate base64 not returned
-              if (!mediaUrl) {
-                const msgId = m.key?.id || m.id;
-                const msgJid = m.key?.remoteJid || remoteJid;
-                if (msgId) {
-                  mediaUrl = `/api/whatsapp/media?id=${encodeURIComponent(msgId)}&jid=${encodeURIComponent(msgJid)}&filename=${encodeURIComponent(fileName || "attachment")}`;
-                }
+            // Use on-demand streaming media route to prevent slow blocking base64 downloads
+            if (mediaType) {
+              const msgId = m.key?.id || m.id;
+              const msgJid = m.key?.remoteJid || remoteJid;
+              if (msgId) {
+                mediaUrl = `/api/whatsapp/media?id=${encodeURIComponent(msgId)}&jid=${encodeURIComponent(msgJid)}&filename=${encodeURIComponent(fileName || "attachment")}`;
               }
             }
 

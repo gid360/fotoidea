@@ -164,18 +164,11 @@ export function ConversationsClient() {
   }, [qc]);
 
   // Fetch detail for selected conversation
-  const { data: detail, refetch: refetchDetail } = useQuery<ConversationDetailDto>({
+  const { data: detail, refetch: refetchDetail, isLoading: isDetailLoading } = useQuery<ConversationDetailDto>({
     queryKey: ["conversation-detail", activeSelectedId],
     queryFn: () => fetch(`/api/conversations/${activeSelectedId}`).then((r) => r.json()),
     enabled: !!activeSelectedId,
     staleTime: 1000 * 60 * 3,
-    initialData: selectedListItem
-      ? ({
-          ...selectedListItem,
-          notes: [],
-          messages: selectedListItem.messages || [],
-        } as any)
-      : undefined,
     refetchInterval: 8000,
   });
 
@@ -413,12 +406,17 @@ export function ConversationsClient() {
       </div>
 
       {/* COLUMN 2: CENTER CHAT PANEL */}
-      {detail ? (
+      {detail && detail.id === activeSelectedId ? (
         <ChatPanel
           conversation={detail}
           onRefresh={refetchDetail}
           onOpenClientPanel={() => setShowClientPanel(!showClientPanel)}
         />
+      ) : activeSelectedId && isDetailLoading ? (
+        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-muted-foreground bg-slate-50">
+          <RefreshCw className="h-7 w-7 animate-spin text-primary mb-2" />
+          <p className="font-medium text-xs text-slate-600">Загрузка переписки…</p>
+        </div>
       ) : (
         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-muted-foreground bg-slate-50">
           <MessageCircle className="h-12 w-12 text-slate-300 mb-2" />
@@ -427,7 +425,7 @@ export function ConversationsClient() {
       )}
 
       {/* COLUMN 3: RIGHT CLIENT PANEL */}
-      {detail && showClientPanel && (
+      {detail && detail.id === activeSelectedId && showClientPanel && (
         <ClientPanel
           conversation={detail}
           funnelStages={funnelStages}
