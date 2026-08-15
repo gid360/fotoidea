@@ -206,7 +206,12 @@ export async function GET() {
         source: dbLead?.source || "WHATSAPP",
         note: dbClient?.note || dbLead?.note || null,
       },
-      funnelStage: {
+      funnelStage: dbClient ? {
+        id: dbClient.loyaltyTag || "ACTIVE",
+        name: dbClient.loyaltyTag === "NEW" ? "Новый" : dbClient.loyaltyTag === "LOST" ? "Потерянный" : "Действующий",
+        order: 1,
+        color: dbClient.loyaltyTag === "NEW" ? "#3b82f6" : dbClient.loyaltyTag === "LOST" ? "#ef4444" : "#22c55e",
+      } : {
         id: dbLead?.status || "NEW",
         name: dbLead?.status === "IN_PROGRESS" ? "В работе" : dbLead?.status === "SUCCESS" ? "Успешно" : dbLead?.status === "REJECTED" ? "Отказ" : "Новый лид",
         order: 1,

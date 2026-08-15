@@ -155,19 +155,19 @@ export function ClientPanel({
       </div>
 
       <div className="p-4 space-y-4 flex-1 overflow-y-auto">
-        {/* Profile Card */}
-        <div className="flex flex-col items-center text-center space-y-2 pb-3 border-b">
+        {/* Profile Card - Horizontal (Avatar left, details right) */}
+        <div className="flex items-start gap-3 pb-3 border-b">
           <div
-            className="relative cursor-pointer hover:opacity-90 transition-opacity"
+            className="relative cursor-pointer hover:opacity-90 transition-opacity shrink-0"
             onClick={() => client.avatarUrl && setLightboxOpen(true)}
           >
-            <Avatar src={client.avatarUrl} name={clientDisplayName(client)} size="xl" />
-            <ChannelBadge channel={client.channel} className="absolute bottom-0 right-0 h-6 w-6" />
+            <Avatar src={client.avatarUrl} name={clientDisplayName(client)} size="lg" />
+            <ChannelBadge channel={client.channel} className="absolute bottom-0 right-0 h-5 w-5" />
           </div>
 
-          <div className="w-full">
+          <div className="flex-1 min-w-0">
             {editingName ? (
-              <div className="flex items-center gap-1 mt-1">
+              <div className="flex items-center gap-1">
                 <Input
                   value={nameInput}
                   onChange={(e) => setNameInput(e.target.value)}
@@ -182,17 +182,17 @@ export function ClientPanel({
                 </Button>
               </div>
             ) : (
-              <div className="flex items-center justify-center gap-1 mt-1 group">
-                <h3 className="font-bold text-sm text-slate-900">{clientDisplayName(client)}</h3>
-                <button onClick={() => setEditingName(true)} className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-slate-600">
+              <div className="flex items-center gap-1 group">
+                <h3 className="font-bold text-sm text-slate-900 truncate">{clientDisplayName(client)}</h3>
+                <button onClick={() => setEditingName(true)} className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-slate-600 shrink-0">
                   <Edit2 className="h-3 w-3" />
                 </button>
               </div>
             )}
 
-            <p className="text-slate-500 font-mono mt-0.5">{formatPhonePretty(client.phone)}</p>
+            <p className="text-slate-500 font-mono text-xs mt-0.5">{formatPhonePretty(client.phone)}</p>
 
-            <div className="flex items-center justify-center gap-1.5 mt-2 flex-wrap">
+            <div className="flex items-center gap-1.5 mt-2 flex-wrap">
               <span
                 className="px-2 py-0.5 rounded-full font-medium text-[10px] text-white"
                 style={{ backgroundColor: SEGMENT_COLOR[client.segment] || "#94a3b8" }}
@@ -204,7 +204,7 @@ export function ClientPanel({
                 href={`/clients/${conversation.clientId}`}
                 target="_blank"
                 rel="noreferrer"
-                className="px-2.5 py-1 rounded-full font-semibold text-[10px] text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 hover:border-indigo-300 flex items-center gap-1 cursor-pointer transition-all hover:shadow-xs active:scale-95"
+                className="px-2.5 py-0.5 rounded-full font-semibold text-[10px] text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 hover:border-indigo-300 flex items-center gap-1 cursor-pointer transition-all hover:shadow-xs active:scale-95"
                 title="Открыть карточку клиента с историей посещений"
               >
                 <CheckCircle2 className="h-3 w-3 text-indigo-600" />
@@ -212,7 +212,7 @@ export function ClientPanel({
               </a>
 
               {client.source && (
-                <Badge variant="outline" className="text-[10px]">
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                   {client.source}
                 </Badge>
               )}
@@ -228,14 +228,16 @@ export function ClientPanel({
               Этап воронки
             </span>
             {activeStageObj && (
-              <span className="h-2.5 w-2.5 rounded-full animate-pulse shadow-2xs" style={{ backgroundColor: activeStageObj.color }} />
+              <span className="text-[10px] text-slate-400 font-normal">
+                {activeStageObj.name}
+              </span>
             )}
           </label>
 
           {/* Trigger button (Active stage colored row) */}
           {activeStageObj && (
             <button
-              onClick={() => setIsStageDropdownOpen(!isStageDropdownOpen)}
+              onClick={() => setIsStageDropdownOpen((prev) => !prev)}
               disabled={updatingStage}
               className="w-full text-left px-3 py-2 rounded-lg border text-xs font-semibold transition-all flex items-center justify-between shadow-2xs cursor-pointer hover:opacity-95"
               style={{
@@ -300,7 +302,7 @@ export function ClientPanel({
                           className="text-[10px] px-1.5 py-0.5 rounded text-white font-bold flex items-center gap-0.5 shadow-2xs"
                           style={{ backgroundColor: stage.color }}
                         >
-                          <Check className="h-3 w-3 stroke-[3]" />
+                          <Check className="h-3 w-3" />
                         </span>
                       )}
                     </button>
@@ -321,14 +323,28 @@ export function ClientPanel({
           </label>
           {upcomingBookings.length > 0 ? (
             <div className="space-y-1.5">
-              {upcomingBookings.map((b) => (
-                <div key={b.id} className="p-2 rounded-lg bg-blue-50/70 border border-blue-100 text-xs space-y-0.5">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium text-slate-900 truncate">{b.directionName}</span>
-                    <span className="text-[10px] font-semibold text-blue-700">{formatDateTime(b.startAt)}</span>
-                  </div>
-                </div>
-              ))}
+              {upcomingBookings.map((b) => {
+                const dateStr = b.startAt ? b.startAt.split("T")[0] : "";
+                const scheduleHref = dateStr ? `/schedule?date=${dateStr}` : "/schedule";
+                return (
+                  <a
+                    key={b.id}
+                    href={scheduleHref}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="p-2 rounded-lg bg-blue-50/80 hover:bg-blue-100/90 border border-blue-100 hover:border-blue-200 text-xs space-y-0.5 block transition-all hover:shadow-xs group cursor-pointer"
+                    title="Перейти к записи в расписании"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-slate-900 group-hover:text-blue-700 truncate">{b.directionName}</span>
+                      <span className="text-[10px] font-semibold text-blue-700 group-hover:underline flex items-center gap-0.5">
+                        {formatDateTime(b.startAt)}
+                        <ChevronRight className="h-3 w-3 inline opacity-70 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
+                      </span>
+                    </div>
+                  </a>
+                );
+              })}
             </div>
           ) : (
             <p className="text-[11px] text-slate-400 py-1">Предстоящих записей нет</p>
