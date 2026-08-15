@@ -59,7 +59,33 @@ function NavItem({ item, collapsed }: { item: NavItemDef; collapsed: boolean }) 
       isActive ? "bg-sidebar-accent text-white" : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-white"
     );
 
-    if (!collapsed && item.createHref) {
+    if (collapsed) {
+      return (
+        <div className="group relative flex justify-center py-0.5">
+          <Link
+            href={item.href}
+            aria-label={item.label}
+            className={cn(
+              "w-9 h-9 flex items-center justify-center rounded-lg transition-all duration-150 relative",
+              isActive
+                ? "bg-sidebar-accent text-white shadow-xs font-semibold"
+                : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-white"
+            )}
+          >
+            <item.icon className="h-5 w-5 shrink-0" />
+          </Link>
+
+          {/* Всплывающее название раздела при компактном режиме */}
+          <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2.5 hidden group-hover:flex items-center z-50 pointer-events-none">
+            <div className="bg-[#0e3827] text-white text-xs font-semibold px-2.5 py-1.5 rounded-lg shadow-2xl border border-white/20 whitespace-nowrap animate-in fade-in-0 zoom-in-95 duration-100 flex items-center gap-1.5">
+              <span>{item.label}</span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (item.createHref) {
       return (
         <div className="flex items-center">
           <Link href={item.href} className={cn(baseClass, "flex-1")}>
@@ -75,10 +101,9 @@ function NavItem({ item, collapsed }: { item: NavItemDef; collapsed: boolean }) 
     }
 
     return (
-      <Link href={item.href} title={collapsed ? item.label : undefined}
-        className={cn(baseClass, collapsed ? "justify-center" : "")}>
+      <Link href={item.href} className={baseClass}>
         <item.icon className="h-4 w-4 shrink-0" />
-        {!collapsed && item.label}
+        {item.label}
       </Link>
     );
   }
@@ -87,17 +112,18 @@ function NavItem({ item, collapsed }: { item: NavItemDef; collapsed: boolean }) 
   if (collapsed) {
     // В свёрнутом виде — flyout при hover
     return (
-      <div className="group relative">
-        <button title={item.label}
+      <div className="group relative flex justify-center py-0.5">
+        <button
+          aria-label={item.label}
           className={cn(
-            "w-full flex items-center justify-center px-3 py-2 rounded-md text-sm font-medium transition-colors",
+            "w-9 h-9 flex items-center justify-center rounded-lg text-sm font-medium transition-colors",
             isGroupActive ? "bg-sidebar-accent text-white" : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-white"
           )}>
-          <item.icon className="h-4 w-4" />
+          <item.icon className="h-5 w-5" />
         </button>
-        <div className="absolute left-full top-0 hidden group-hover:block z-50 ml-1">
-          <div className="w-52 bg-sidebar border border-sidebar-border rounded-md shadow-xl py-1">
-            <p className="px-3 py-1 text-xs text-sidebar-foreground/50 font-medium uppercase tracking-wide">{item.label}</p>
+        <div className="absolute left-full top-0 hidden group-hover:block z-50 ml-2.5">
+          <div className="w-52 bg-[#0e3827] border border-white/20 rounded-lg shadow-2xl py-1">
+            <p className="px-3 py-1 text-xs text-white/70 font-semibold uppercase tracking-wide border-b border-white/10">{item.label}</p>
             {item.children?.map((child) => {
               const isActive = isExactOrChild(pathname, child.href);
               return (
@@ -222,13 +248,20 @@ export function Sidebar({
             <img src={logoUrl} alt="Логотип Fotoidea"
               className="h-7 w-7 object-contain shrink-0" />
             {onToggleCollapse && (
-              <button
-                onClick={onToggleCollapse}
-                title="Развернуть меню"
-                className="p-1.5 rounded-md text-sidebar-foreground/70 hover:text-white hover:bg-sidebar-accent/60 transition-colors shrink-0"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
+              <div className="group relative flex justify-center">
+                <button
+                  onClick={onToggleCollapse}
+                  className="p-1.5 rounded-md text-sidebar-foreground/70 hover:text-white hover:bg-sidebar-accent/60 transition-colors shrink-0"
+                  aria-label="Развернуть меню"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+                <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2.5 hidden group-hover:flex items-center z-50 pointer-events-none">
+                  <div className="bg-[#0e3827] text-white text-xs font-semibold px-2.5 py-1.5 rounded-lg shadow-2xl border border-white/20 whitespace-nowrap animate-in fade-in-0 zoom-in-95 duration-100">
+                    <span>Развернуть меню</span>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         )}
@@ -252,8 +285,18 @@ export function Sidebar({
       <div className="mt-auto px-2 py-3 border-t border-sidebar-border shrink-0 bg-sidebar">
         {session?.user && (
           <div className={cn("flex items-center gap-2 mb-2", collapsed ? "justify-center" : "px-1")}>
-            <div className="h-7 w-7 shrink-0 rounded-full bg-sidebar-accent/60 flex items-center justify-center text-white text-xs font-bold">
-              {session.user.name?.[0] ?? "?"}
+            <div className="group relative flex justify-center">
+              <div className="h-7 w-7 shrink-0 rounded-full bg-sidebar-accent/60 flex items-center justify-center text-white text-xs font-bold">
+                {session.user.name?.[0] ?? "?"}
+              </div>
+              {collapsed && (
+                <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2.5 hidden group-hover:flex items-center z-50 pointer-events-none">
+                  <div className="bg-[#0e3827] text-white text-xs font-semibold px-2.5 py-1.5 rounded-lg shadow-2xl border border-white/20 whitespace-nowrap animate-in fade-in-0 zoom-in-95 duration-100">
+                    <p className="font-semibold">{session.user.name}</p>
+                    <p className="text-[10px] text-white/70 font-normal">{roleLabel}</p>
+                  </div>
+                </div>
+              )}
             </div>
             {!collapsed && (
               <div className="flex-1 min-w-0">
@@ -263,17 +306,30 @@ export function Sidebar({
             )}
           </div>
         )}
-        <button
-          title={collapsed ? "Выйти" : undefined}
-          onClick={() => signOut({ callbackUrl: "/login" })}
-          className={cn(
-            "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-sidebar-foreground hover:bg-sidebar-accent/40 hover:text-white transition-colors",
-            collapsed ? "justify-center" : ""
-          )}
-        >
-          <LogOut className="h-3.5 w-3.5 shrink-0" />
-          {!collapsed && "Выйти"}
-        </button>
+        {collapsed ? (
+          <div className="group relative flex justify-center">
+            <button
+              onClick={() => signOut({ callbackUrl: "/login" })}
+              className="w-9 h-9 flex items-center justify-center rounded-lg text-sidebar-foreground hover:bg-sidebar-accent/40 hover:text-white transition-colors"
+              aria-label="Выйти"
+            >
+              <LogOut className="h-4 w-4 shrink-0" />
+            </button>
+            <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2.5 hidden group-hover:flex items-center z-50 pointer-events-none">
+              <div className="bg-[#0e3827] text-white text-xs font-semibold px-2.5 py-1.5 rounded-lg shadow-2xl border border-white/20 whitespace-nowrap animate-in fade-in-0 zoom-in-95 duration-100">
+                <span>Выйти</span>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => signOut({ callbackUrl: "/login" })}
+            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-sidebar-foreground hover:bg-sidebar-accent/40 hover:text-white transition-colors"
+          >
+            <LogOut className="h-3.5 w-3.5 shrink-0" />
+            Выйти
+          </button>
+        )}
       </div>
     </aside>
   );
