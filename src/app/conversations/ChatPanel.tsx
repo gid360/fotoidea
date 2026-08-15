@@ -251,6 +251,37 @@ export function ChatPanel({
     return () => window.removeEventListener("click", handleGlobalClick);
   }, []);
 
+  async function handleReact(messageId: string, emoji: string, fromMe: boolean) {
+    if (!messageId) return;
+
+    // Optimistic UI update
+    setMsgReactions((prev) => ({
+      ...prev,
+      [messageId]: emoji,
+    }));
+
+    try {
+      const res = await fetch("/api/whatsapp/reaction", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          remoteJid: conversation.remoteJid,
+          messageId,
+          fromMe,
+          reaction: emoji,
+        }),
+      });
+
+      if (!res.ok) {
+        console.error("Failed to send reaction to WhatsApp");
+      } else {
+        onRefresh();
+      }
+    } catch (e) {
+      console.error("Error sending reaction:", e);
+    }
+  }
+
   async function handleSaveEdit() {
     if (!editingMsg || !editText.trim() || savingEdit) return;
     setSavingEdit(true);
@@ -586,10 +617,10 @@ export function ChatPanel({
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleReact(m.id, emoji);
+                                  handleReact(m.id, emoji, isOutgoing);
                                   setActiveEmojiMsgId(null);
                                 }}
-                                className="hover:scale-130 transition-transform p-0.5 text-sm leading-none rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
+                                className="hover:scale-130 transition-transform p-0.5 text-sm leading-none rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                               >
                                 {emoji}
                               </button>
@@ -741,7 +772,14 @@ export function ChatPanel({
 
                     {/* Reaction badge */}
                     {allReactions.length > 0 && (
-                      <div className="absolute -bottom-2.5 right-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-full px-1.5 py-0.5 text-[11px] shadow-sm font-semibold leading-none flex items-center gap-0.5 z-10">
+                      <div
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleReact(m.id, "", isOutgoing);
+                        }}
+                        className="absolute -bottom-2.5 right-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-full px-1.5 py-0.5 text-[11px] shadow-sm font-semibold leading-none flex items-center gap-0.5 z-10 cursor-pointer select-none hover:scale-105 transition-transform"
+                        title="Нажмите, чтобы убрать реакцию"
+                      >
                         {allReactions.map((r, idx) => (
                           <span key={idx}>{r}</span>
                         ))}
