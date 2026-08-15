@@ -604,7 +604,7 @@ export function ChatPanel({
                       );
                       const rawUrl = m.mediaUrl || "";
                       const safeUrl = rawUrl.includes("mmg.whatsapp.net")
-                        ? `/api/whatsapp/media?id=${encodeURIComponent(m.id)}&jid=${encodeURIComponent(detail?.remoteJid || "")}&filename=${encodeURIComponent(filename)}`
+                        ? `/api/whatsapp/media?id=${encodeURIComponent(m.id)}&jid=${encodeURIComponent(conversation?.remoteJid || "")}&filename=${encodeURIComponent(filename)}`
                         : rawUrl;
                       const downloadUrl = safeUrl.startsWith("/api/whatsapp/media")
                         ? (safeUrl.includes("download=1") ? safeUrl : `${safeUrl}&download=1`)
