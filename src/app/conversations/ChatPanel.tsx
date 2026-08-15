@@ -339,13 +339,6 @@ export function ChatPanel({
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<any>(null);
 
-  const handleReact = (msgId: string, emoji: string) => {
-    setMsgReactions(prev => ({
-      ...prev,
-      [msgId]: prev[msgId] === emoji ? "" : emoji,
-    }));
-  };
-
   const handleForwardMessage = async (targetPhone: string) => {
     if (!forwardingMsg) return;
     setSending(true);

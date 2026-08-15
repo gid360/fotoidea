@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { getWhatsAppConfig } from "@/lib/whatsapp";
+import { prisma } from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -16,8 +16,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "remoteJid and messageId are required" }, { status: 400 });
     }
 
-    const wa = await getWhatsAppConfig();
-    if (!wa.serverUrl || !wa.apiKey || !wa.instanceName) {
+    const wa = await prisma.whatsAppSession.findUnique({ where: { id: "singleton" } });
+    if (!wa || wa.provider !== "EVOLUTION" || !wa.serverUrl || !wa.apiKey || !wa.instanceName) {
       return NextResponse.json({ error: "WhatsApp not configured" }, { status: 400 });
     }
 
