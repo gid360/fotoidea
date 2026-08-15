@@ -26,6 +26,14 @@ const DEFAULT_FUNNEL_STAGES: FunnelStageDto[] = [
   { id: "REPEAT_BUYER", name: "Повторно купил", order: 5, color: "#8b5cf6" },
 ];
 
+interface ClientPanelProps {
+  conversation: ConversationDetailDto;
+  onClose?: () => void;
+  onBack?: () => void;
+  onChanged: () => void;
+  funnelStages?: FunnelStageDto[];
+}
+
 export function ClientPanel({
   conversation,
   onClose,
