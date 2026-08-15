@@ -92,18 +92,35 @@ export function ConversationsClient() {
         .catch(() => []),
   });
 
-  // Fetch conversations list
-  const { data: conversations = [], isLoading: loading, refetch: refetchConversations } = useQuery<ConversationListItemDto[]>({
+  // Fetch conversations list with local cache for instant initial display
+  const { data: conversations = [], isLoading: loading, isFetching, refetch: refetchConversations } = useQuery<ConversationListItemDto[]>({
     queryKey: ["conversations-list"],
     queryFn: async () => {
       const res = await fetch("/api/conversations");
       if (!res.ok) throw new Error("Failed to fetch conversations");
       const data = await res.json();
       if (!Array.isArray(data)) throw new Error("Invalid response format");
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("fotoidea_cached_conversations", JSON.stringify(data));
+        } catch {}
+      }
       return data;
     },
+    initialData: () => {
+      if (typeof window !== "undefined") {
+        try {
+          const cached = localStorage.getItem("fotoidea_cached_conversations");
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          }
+        } catch {}
+      }
+      return undefined;
+    },
     placeholderData: (previousData) => previousData,
-    staleTime: 5000,
+    staleTime: 1000 * 30,
     refetchInterval: 8000,
     retry: 2,
   });
@@ -294,14 +311,21 @@ export function ConversationsClient() {
           onScroll={handleDialogsScroll}
           className="flex-1 overflow-y-auto divide-y min-h-0"
         >
-          {loading ? (
+          {conversations.length === 0 && (loading || isFetching) ? (
             <div className="p-8 text-center text-xs text-muted-foreground">
-              <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-2" />
+              <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-2 text-primary" />
               Загрузка диалогов…
             </div>
           ) : displayedConversations.length === 0 ? (
             <div className="p-8 text-center text-xs text-muted-foreground">
-              Диалоги не найдены
+              {search.trim() || channelFilter !== "ALL" ? (
+                "Диалоги не найдены"
+              ) : (
+                <div className="flex flex-col items-center gap-2">
+                  <RefreshCw className="h-5 w-5 animate-spin mx-auto text-primary" />
+                  <span>Загрузка диалогов…</span>
+                </div>
+              )}
             </div>
           ) : (
             <>

@@ -237,6 +237,24 @@ export function ScheduleClient({ initialHalls }: { initialHalls: Hall[] }) {
     } catch {
       // Игнорируем ошибки доступа к localStorage
     }
+
+    if (typeof window !== "undefined") {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const dateParam = params.get("date");
+        const eventIdParam = params.get("eventId") || params.get("bookingId");
+        if (dateParam) {
+          const parts = dateParam.split("-");
+          if (parts.length === 3) {
+            const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+            if (!isNaN(d.getTime())) setSelectedDate(d);
+          }
+        }
+        if (eventIdParam) {
+          setDetailEventId(eventIdParam);
+        }
+      } catch {}
+    }
   }, []);
 
   function handleCompactChange(isCompact: boolean) {

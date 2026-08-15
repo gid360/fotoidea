@@ -11,22 +11,32 @@ export async function POST(
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const { text } = await req.json();
+  const body = await req.json();
+  const text = body.text;
   if (!text || !text.trim()) {
     return NextResponse.json({ error: "Text is required" }, { status: 400 });
   }
 
-  const phone = id.split("@")[0].replace(/\D/g, "");
-  let client = await prisma.client.findFirst({
-    where: { phone: { contains: phone.slice(-10) } },
-  });
+  const rawPhone = body.phone || id;
+  let phone = rawPhone.split("@")[0].replace(/\D/g, "");
+
+  let client = null;
+  if (phone && phone.length <= 12) {
+    client = await prisma.client.findFirst({
+      where: { phone: { contains: phone.slice(-10) } },
+    });
+  }
 
   if (!client) {
+    const formattedPhone = phone.length <= 12
+      ? (phone.startsWith("7") || phone.startsWith("8") ? `+7${phone.slice(-10)}` : `+${phone}`)
+      : `+${phone}`;
+
     client = await prisma.client.create({
       data: {
         firstName: "Клиент",
         lastName: "",
-        phone: phone.startsWith("7") || phone.startsWith("8") ? `+7${phone.slice(-10)}` : `+${phone}`,
+        phone: formattedPhone,
       },
     });
   }
@@ -38,7 +48,7 @@ export async function POST(
       notes = JSON.parse(client.note);
       if (!Array.isArray(notes)) notes = [];
     } catch {
-      notes = client.note.split("\n").filter(Boolean).map((line, idx) => ({
+      notes = client.note.split("\n").filter(Boolean).map((line: string, idx: number) => ({
         id: `legacy-${idx}`,
         text: line.trim(),
         createdAt: client!.createdAt.toISOString(),
@@ -75,15 +85,19 @@ export async function DELETE(
   const { id } = await params;
   const { searchParams } = new URL(req.url);
   const noteId = searchParams.get("noteId");
+  const rawPhone = searchParams.get("phone") || id;
 
   if (!noteId) {
     return NextResponse.json({ error: "noteId required" }, { status: 400 });
   }
 
-  const phone = id.split("@")[0].replace(/\D/g, "");
-  const client = await prisma.client.findFirst({
-    where: { phone: { contains: phone.slice(-10) } },
-  });
+  const phone = rawPhone.split("@")[0].replace(/\D/g, "");
+  let client = null;
+  if (phone && phone.length <= 12) {
+    client = await prisma.client.findFirst({
+      where: { phone: { contains: phone.slice(-10) } },
+    });
+  }
 
   if (!client || !client.note) {
     return NextResponse.json({ ok: true });
@@ -94,7 +108,7 @@ export async function DELETE(
     notes = JSON.parse(client.note);
     if (!Array.isArray(notes)) notes = [];
   } catch {
-    notes = client.note.split("\n").filter(Boolean).map((line, idx) => ({
+    notes = client.note.split("\n").filter(Boolean).map((line: string, idx: number) => ({
       id: `legacy-${idx}`,
       text: line.trim(),
       createdAt: client.createdAt.toISOString(),

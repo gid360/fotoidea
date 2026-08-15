@@ -62,8 +62,10 @@ export async function GET() {
     }
   }
 
-  // Fast contact book map
+  // Fast contact book map & LID mapping
   const contactBook = new Map<string, string>();
+  const lidToPhone = new Map<string, string>();
+
   evolutionContacts.forEach((ct: any) => {
     const rawJid = ct.remoteJid || ct.id || "";
     const p = rawJid.split("@")[0].replace(/\D/g, "");
@@ -73,6 +75,14 @@ export async function GET() {
       if (p.length >= 10) {
         contactBook.set(p.slice(-10), name);
       }
+    }
+    if (ct.lid) {
+      const lidClean = ct.lid.split("@")[0].replace(/\D/g, "");
+      if (p && p.length <= 12) lidToPhone.set(lidClean, p);
+    }
+    if (rawJid.includes("@lid") && p && ct.remoteJidAlt) {
+      const altP = ct.remoteJidAlt.split("@")[0].replace(/\D/g, "");
+      if (altP && altP.length <= 12) lidToPhone.set(p, altP);
     }
   });
 
@@ -141,8 +151,12 @@ export async function GET() {
     }
 
     let phone = altJid.split("@")[0].replace(/\D/g, "");
-    if (!phone || phone.length < 10 || phone.length > 12) {
-      phone = exactJid.split("@")[0].replace(/\D/g, "");
+    if (!phone || phone.length > 12) {
+      const lidClean = exactJid.split("@")[0].replace(/\D/g, "");
+      const mapped = lidToPhone.get(lidClean);
+      if (mapped) {
+        phone = mapped;
+      }
     }
 
     if (!phone || phone.length < 10 || phone.length > 12) return;
@@ -179,13 +193,13 @@ export async function GET() {
       ? c.lastMessage.pushName
       : null;
 
-    const last10 = phone.slice(-10);
-    const dbClient = clientByPhone.get(phone) || clientByPhone.get(last10);
-    const dbLead = leadByPhone.get(phone) || leadByPhone.get(last10);
+    const last10 = phone.length >= 10 ? phone.slice(-10) : phone;
+    const dbClient = clientByPhone.get(phone) || (last10 ? clientByPhone.get(last10) : null);
+    const dbLead = leadByPhone.get(phone) || (last10 ? leadByPhone.get(last10) : null);
 
     let displayName = dbClient?.firstName
       ? `${dbClient.firstName} ${dbClient.lastName || ""}`.trim()
-      : (dbLead?.name || contactBook.get(phone) || contactBook.get(last10) || pushName || null);
+      : (dbLead?.name || contactBook.get(phone) || (last10 ? contactBook.get(last10) : null) || pushName || null);
 
     if (displayName && (
       displayName.toLowerCase() === "fotoidea" ||
@@ -200,6 +214,8 @@ export async function GET() {
       c.pinned || c.isPinned || c.pin || (typeof c.pinnedTimestamp === "number" && c.pinnedTimestamp > 0)
     );
 
+    const safePhone = phone.length <= 12 ? phone : (dbClient?.phone?.replace(/\D/g, "") || "");
+
     const item = {
       id: exactJid,
       clientId: dbClient?.id || exactJid,
@@ -208,15 +224,14 @@ export async function GET() {
       assignedAdminId: null,
       status: "OPEN",
       lastMessageAt: ts,
-      unreadCount: c.unreadCount || 0,
       isPinned,
+      unreadCount: c.unreadCount || 0,
       client: {
         id: dbClient?.id || exactJid,
-        phone,
-        name: displayName,
-        segment: dbClient?.loyaltyTag === "NEW" ? "NEW" : dbClient?.loyaltyTag === "LOST" ? "FORMER" : "ACTIVE",
-        lastVisitAt: dbClient?.lastVisit ? dbClient.lastVisit.toISOString() : null,
+        name: displayName || (safePhone ? safePhone : "Клиент"),
+        phone: safePhone,
         channel: "WHATSAPP",
+        segment: (dbClient?.loyaltyTag as any) || "NEW",
         avatarUrl: c.profilePicUrl || dbClient?.photoUrl || null,
         source: dbLead?.source || "WHATSAPP",
         note: dbClient?.note || dbLead?.note || null,

@@ -66,7 +66,7 @@ export function ClientPanel({
       await fetch(`/api/conversations/${conversation.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: nameInput }),
+        body: JSON.stringify({ name: nameInput.trim(), phone: client.phone }),
       });
       setEditingName(false);
       if (onChanged) onChanged();
@@ -84,7 +84,7 @@ export function ClientPanel({
       await fetch(`/api/conversations/${conversation.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ funnelStageId: stageId }),
+        body: JSON.stringify({ funnelStageId: stageId, phone: client.phone }),
       });
       if (onChanged) onChanged();
     } catch (e) {
@@ -101,7 +101,7 @@ export function ClientPanel({
       await fetch(`/api/conversations/${conversation.id}/notes`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: noteText }),
+        body: JSON.stringify({ text: noteText.trim(), phone: client.phone }),
       });
       setNoteText("");
       if (onChanged) onChanged();
@@ -114,7 +114,8 @@ export function ClientPanel({
 
   async function handleDeleteNote(noteId: string) {
     try {
-      const res = await fetch(`/api/conversations/${conversation.id}/notes?noteId=${noteId}`, {
+      const phoneParam = client.phone ? `&phone=${encodeURIComponent(client.phone)}` : "";
+      const res = await fetch(`/api/conversations/${conversation.id}/notes?noteId=${noteId}${phoneParam}`, {
         method: "DELETE",
       });
       if (res.ok && onChanged) onChanged();
@@ -319,7 +320,7 @@ export function ClientPanel({
             <div className="space-y-1.5">
               {upcomingBookings.map((b) => {
                 const dateStr = b.startAt ? b.startAt.split("T")[0] : "";
-                const scheduleHref = dateStr ? `/schedule?date=${dateStr}` : "/schedule";
+                const scheduleHref = dateStr ? `/schedule?date=${dateStr}&eventId=${b.id}` : "/schedule";
                 return (
                   <a
                     key={b.id}

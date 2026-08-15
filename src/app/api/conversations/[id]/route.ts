@@ -422,18 +422,22 @@ export async function PATCH(
 
   const { id } = await params;
   const body = await req.json();
-  const phone = id.split("@")[0].replace(/\D/g, "");
+  const rawPhone = body.phone || id;
+  const phone = rawPhone.split("@")[0].replace(/\D/g, "");
 
-  let client = await prisma.client.findFirst({
-    where: { phone: { contains: phone.slice(-10) } },
-  });
+  let client = null;
+  if (phone && phone.length <= 12) {
+    client = await prisma.client.findFirst({
+      where: { phone: { contains: phone.slice(-10) } },
+    });
+  }
 
   if (!client && body.name) {
     client = await prisma.client.create({
       data: {
         firstName: body.name,
         lastName: "",
-        phone: "+" + phone,
+        phone: phone.length <= 12 ? (phone.startsWith("7") || phone.startsWith("8") ? `+7${phone.slice(-10)}` : `+${phone}`) : `+${phone}`,
       },
     });
   } else if (client && body.name) {
@@ -443,11 +447,22 @@ export async function PATCH(
     });
   }
 
-  // Update lead status if funnelStageId passed
+  // Update funnel stage (both on Client if client exists, and Lead if lead exists)
   if (body.funnelStageId) {
-    let lead = await prisma.lead.findFirst({
-      where: { phone: { contains: phone.slice(-10) } },
-    });
+    if (client) {
+      const loyaltyTag = body.funnelStageId === "NEW" ? "NEW" : body.funnelStageId === "LOST" ? "LOST" : "REGULAR";
+      await prisma.client.update({
+        where: { id: client.id },
+        data: { loyaltyTag },
+      });
+    }
+
+    let lead = null;
+    if (phone && phone.length <= 12) {
+      lead = await prisma.lead.findFirst({
+        where: { phone: { contains: phone.slice(-10) } },
+      });
+    }
 
     if (lead) {
       await prisma.lead.update({
@@ -457,8 +472,8 @@ export async function PATCH(
     } else {
       await prisma.lead.create({
         data: {
-          name: client?.firstName || `+${phone}`,
-          phone: "+" + phone,
+          name: client?.firstName || (phone.length <= 12 ? `+${phone}` : "Клиент"),
+          phone: phone.length <= 12 ? `+${phone}` : "+" + phone,
           source: "WHATSAPP",
           status: body.funnelStageId,
         },
