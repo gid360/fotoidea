@@ -11,7 +11,7 @@ import { Camera } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [login, setLogin] = useState("");
+  const [login, setLogin] = useState("+7");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
