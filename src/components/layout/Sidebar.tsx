@@ -13,19 +13,20 @@ import {
 import { UserRole } from "@prisma/client";
 
 const nav = [
-  { label: "Главная",        href: "/dashboard",        icon: LayoutDashboard },
-  { label: "Сообщения",     href: "/conversations",    icon: MessageCircle, adminOnly: true },
-  { label: "Расписание",     href: "/schedule",         icon: CalendarDays, createHref: "/schedule?new=1" },
-  { label: "Клиенты",        href: "/clients",          icon: Users, createHref: "/clients?new=1" },
-  { label: "Воронка продаж", href: "/crm",              icon: ShoppingBag },
-  { label: "Услуги",           href: "/subscriptions/plans", icon: Camera },
-  { label: "Касса",          href: "/cashbox/transactions", icon: Wallet },
-  { label: "Аналитика",      href: "/analytics",        icon: BarChart3, superadminOnly: true },
-  { label: "Настройки",     href: "/settings/halls",   icon: Settings, superadminOnly: true },
+  { label: "Главная",        shortLabel: "Главная",    href: "/dashboard",        icon: LayoutDashboard },
+  { label: "Сообщения",     shortLabel: "Чаты",       href: "/conversations",    icon: MessageCircle, adminOnly: true },
+  { label: "Расписание",     shortLabel: "Записи",     href: "/schedule",         icon: CalendarDays, createHref: "/schedule?new=1" },
+  { label: "Клиенты",        shortLabel: "Клиенты",    href: "/clients",          icon: Users, createHref: "/clients?new=1" },
+  { label: "Воронка продаж", shortLabel: "Воронка",    href: "/crm",              icon: ShoppingBag },
+  { label: "Услуги",           shortLabel: "Услуги",     href: "/subscriptions/plans", icon: Camera },
+  { label: "Касса",          shortLabel: "Касса",      href: "/cashbox/transactions", icon: Wallet },
+  { label: "Аналитика",      shortLabel: "Отчеты",     href: "/analytics",        icon: BarChart3, superadminOnly: true },
+  { label: "Настройки",     shortLabel: "Настройки",  href: "/settings/halls",   icon: Settings, superadminOnly: true },
 ];
 
 interface NavItemDef {
   label: string;
+  shortLabel?: string;
   href?: string;
   icon: React.ElementType;
   createHref?: string;
@@ -61,26 +62,22 @@ function NavItem({ item, collapsed }: { item: NavItemDef; collapsed: boolean }) 
 
     if (collapsed) {
       return (
-        <div className="group relative flex justify-center py-0.5">
+        <div className="flex justify-center py-0.5">
           <Link
             href={item.href}
             aria-label={item.label}
             className={cn(
-              "w-9 h-9 flex items-center justify-center rounded-lg transition-all duration-150 relative",
+              "w-full py-1.5 px-0.5 flex flex-col items-center justify-center rounded-xl transition-all duration-150 gap-0.5 text-center",
               isActive
-                ? "bg-sidebar-accent text-white shadow-xs font-semibold"
-                : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-white"
+                ? "bg-sidebar-accent text-white font-semibold shadow-xs"
+                : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-white"
             )}
           >
             <item.icon className="h-5 w-5 shrink-0" />
+            <span className="text-[10px] leading-tight font-medium tracking-tight truncate max-w-[62px] text-center">
+              {item.shortLabel || item.label}
+            </span>
           </Link>
-
-          {/* Всплывающее название раздела при компактном режиме */}
-          <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2.5 hidden group-hover:flex items-center z-50 pointer-events-none">
-            <div className="bg-[#0e3827] text-white text-xs font-semibold px-2.5 py-1.5 rounded-lg shadow-2xl border border-white/20 whitespace-nowrap animate-in fade-in-0 zoom-in-95 duration-100 flex items-center gap-1.5">
-              <span>{item.label}</span>
-            </div>
-          </div>
         </div>
       );
     }
@@ -116,10 +113,15 @@ function NavItem({ item, collapsed }: { item: NavItemDef; collapsed: boolean }) 
         <button
           aria-label={item.label}
           className={cn(
-            "w-9 h-9 flex items-center justify-center rounded-lg text-sm font-medium transition-colors",
-            isGroupActive ? "bg-sidebar-accent text-white" : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-white"
+            "w-full py-1.5 px-0.5 flex flex-col items-center justify-center rounded-xl transition-all duration-150 gap-0.5 text-center",
+            isGroupActive
+              ? "bg-sidebar-accent text-white font-semibold shadow-xs"
+              : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-white"
           )}>
-          <item.icon className="h-5 w-5" />
+          <item.icon className="h-5 w-5 shrink-0" />
+          <span className="text-[10px] leading-tight font-medium tracking-tight truncate max-w-[62px] text-center">
+            {item.shortLabel || item.label}
+          </span>
         </button>
         <div className="absolute left-full top-0 hidden group-hover:block z-50 ml-2.5">
           <div className="w-52 bg-[#0e3827] border border-white/20 rounded-lg shadow-2xl py-1">
@@ -218,9 +220,9 @@ export function Sidebar({
   return (
     <aside className={cn(
       "h-full shrink-0 flex flex-col bg-sidebar border-r border-sidebar-border transition-all duration-200",
-      collapsed ? "w-14" : "w-60"
+      collapsed ? "w-[72px]" : "w-60"
     )}>
-      <div className="px-3 py-3.5 border-b border-sidebar-border shrink-0">
+      <div className="px-2.5 py-3 border-b border-sidebar-border shrink-0">
         {!collapsed ? (
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2.5 min-w-0">
@@ -248,31 +250,25 @@ export function Sidebar({
             <img src={logoUrl} alt="Логотип Fotoidea"
               className="h-7 w-7 object-contain shrink-0" />
             {onToggleCollapse && (
-              <div className="group relative flex justify-center">
-                <button
-                  onClick={onToggleCollapse}
-                  className="p-1.5 rounded-md text-sidebar-foreground/70 hover:text-white hover:bg-sidebar-accent/60 transition-colors shrink-0"
-                  aria-label="Развернуть меню"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-                <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2.5 hidden group-hover:flex items-center z-50 pointer-events-none">
-                  <div className="bg-[#0e3827] text-white text-xs font-semibold px-2.5 py-1.5 rounded-lg shadow-2xl border border-white/20 whitespace-nowrap animate-in fade-in-0 zoom-in-95 duration-100">
-                    <span>Развернуть меню</span>
-                  </div>
-                </div>
-              </div>
+              <button
+                onClick={onToggleCollapse}
+                className="p-1 rounded-md text-sidebar-foreground/70 hover:text-white hover:bg-sidebar-accent/60 transition-colors shrink-0"
+                title="Развернуть меню"
+                aria-label="Развернуть меню"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
             )}
           </div>
         )}
       </div>
 
-      <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
+      <nav className="flex-1 px-1.5 py-2.5 space-y-1 overflow-y-auto">
         {!sessionReady ? (
           <div className="space-y-1">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className={cn("h-9 rounded-md bg-sidebar-accent/20 animate-pulse",
-                collapsed ? "w-9 mx-auto" : "w-full")} />
+              <div key={i} className={cn("h-11 rounded-md bg-sidebar-accent/20 animate-pulse",
+                collapsed ? "w-11 mx-auto" : "w-full")} />
             ))}
           </div>
         ) : (
@@ -282,21 +278,11 @@ export function Sidebar({
         )}
       </nav>
 
-      <div className="mt-auto px-2 py-3 border-t border-sidebar-border shrink-0 bg-sidebar">
+      <div className="mt-auto px-1.5 py-2.5 border-t border-sidebar-border shrink-0 bg-sidebar">
         {session?.user && (
           <div className={cn("flex items-center gap-2 mb-2", collapsed ? "justify-center" : "px-1")}>
-            <div className="group relative flex justify-center">
-              <div className="h-7 w-7 shrink-0 rounded-full bg-sidebar-accent/60 flex items-center justify-center text-white text-xs font-bold">
-                {session.user.name?.[0] ?? "?"}
-              </div>
-              {collapsed && (
-                <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2.5 hidden group-hover:flex items-center z-50 pointer-events-none">
-                  <div className="bg-[#0e3827] text-white text-xs font-semibold px-2.5 py-1.5 rounded-lg shadow-2xl border border-white/20 whitespace-nowrap animate-in fade-in-0 zoom-in-95 duration-100">
-                    <p className="font-semibold">{session.user.name}</p>
-                    <p className="text-[10px] text-white/70 font-normal">{roleLabel}</p>
-                  </div>
-                </div>
-              )}
+            <div className="h-7 w-7 shrink-0 rounded-full bg-sidebar-accent/60 flex items-center justify-center text-white text-xs font-bold">
+              {session.user.name?.[0] ?? "?"}
             </div>
             {!collapsed && (
               <div className="flex-1 min-w-0">
@@ -307,19 +293,16 @@ export function Sidebar({
           </div>
         )}
         {collapsed ? (
-          <div className="group relative flex justify-center">
+          <div className="flex justify-center">
             <button
               onClick={() => signOut({ callbackUrl: "/login" })}
-              className="w-9 h-9 flex items-center justify-center rounded-lg text-sidebar-foreground hover:bg-sidebar-accent/40 hover:text-white transition-colors"
+              className="w-full py-1.5 px-0.5 flex flex-col items-center justify-center rounded-xl text-sidebar-foreground/80 hover:bg-sidebar-accent/40 hover:text-white transition-colors gap-0.5"
               aria-label="Выйти"
+              title="Выйти"
             >
               <LogOut className="h-4 w-4 shrink-0" />
+              <span className="text-[9px] font-medium">Выйти</span>
             </button>
-            <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2.5 hidden group-hover:flex items-center z-50 pointer-events-none">
-              <div className="bg-[#0e3827] text-white text-xs font-semibold px-2.5 py-1.5 rounded-lg shadow-2xl border border-white/20 whitespace-nowrap animate-in fade-in-0 zoom-in-95 duration-100">
-                <span>Выйти</span>
-              </div>
-            </div>
           </div>
         ) : (
           <button
