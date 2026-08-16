@@ -228,6 +228,7 @@ export async function GET() {
       unreadCount: c.unreadCount || 0,
       client: {
         id: dbClient?.id || exactJid,
+        dbClientId: dbClient?.id || null,
         name: displayName || (safePhone ? safePhone : "Клиент"),
         phone: safePhone,
         channel: "WHATSAPP",
@@ -237,15 +238,15 @@ export async function GET() {
         note: dbClient?.note || dbLead?.note || null,
       },
       funnelStage: dbClient ? {
-        id: dbClient.loyaltyTag || "ACTIVE",
-        name: dbClient.loyaltyTag === "NEW" ? "Новый" : dbClient.loyaltyTag === "LOST" ? "Потерянный" : "Действующий",
+        id: dbClient.loyaltyTag || "NEW",
+        name: dbClient.loyaltyTag === "NEW" ? "Новый" : dbClient.loyaltyTag === "ACTIVE" ? "Действующий" : dbClient.loyaltyTag === "REGULAR" ? "Постоянный" : "Потерянный",
         order: 1,
-        color: dbClient.loyaltyTag === "NEW" ? "#3b82f6" : dbClient.loyaltyTag === "LOST" ? "#ef4444" : "#144d37",
+        color: dbClient.loyaltyTag === "NEW" ? "#2563eb" : dbClient.loyaltyTag === "ACTIVE" ? "#059669" : dbClient.loyaltyTag === "REGULAR" ? "#7c3aed" : "#dc2626",
       } : {
         id: dbLead?.status || "NEW",
         name: dbLead?.status === "IN_PROGRESS" ? "В работе" : dbLead?.status === "SUCCESS" ? "Успешно" : dbLead?.status === "REJECTED" ? "Отказ" : "Новый лид",
         order: 1,
-        color: dbLead?.status === "SUCCESS" ? "#144d37" : dbLead?.status === "REJECTED" ? "#ef4444" : "#3b82f6",
+        color: dbLead?.status === "SUCCESS" ? "#059669" : dbLead?.status === "REJECTED" ? "#dc2626" : "#2563eb",
       },
       assignedAdmin: null,
       messages: [

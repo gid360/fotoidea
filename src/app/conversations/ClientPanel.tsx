@@ -3,7 +3,7 @@
 import { useState } from "react";
 import {
   User, Phone, Mail, Calendar, MessageCircle, Tag, Plus, Edit2, Check, X,
-  Clock, Shield, Award, Camera, RefreshCw, AlertCircle, ShoppingBag, FileText, ChevronRight, CheckCircle2, ChevronDown, Trash2, ArrowLeft,
+  Clock, Shield, Award, Camera, RefreshCw, AlertCircle, ShoppingBag, FileText, ChevronRight, CheckCircle2, ChevronDown, Trash2, ArrowLeft, ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -211,7 +211,30 @@ export function ClientPanel({
               </div>
             )}
 
-            <p className="text-slate-500 font-mono text-xs mt-0.5">{formatPhonePretty(client.phone)}</p>
+            {client.dbClientId || (client.id && !client.id.includes("@")) ? (
+              <a
+                href={`/clients/${client.dbClientId || client.id}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 text-indigo-600 hover:text-indigo-800 hover:underline font-mono text-xs mt-0.5 font-medium cursor-pointer"
+                title="Открыть карточку клиента в базе"
+              >
+                <Phone className="h-3 w-3 text-slate-400" />
+                {formatPhonePretty(client.phone)}
+                <ExternalLink className="h-3 w-3 text-indigo-400" />
+              </a>
+            ) : (
+              <a
+                href={`/clients?search=${encodeURIComponent((client.phone || "").slice(-10))}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 text-slate-500 hover:text-indigo-600 hover:underline font-mono text-xs mt-0.5 cursor-pointer"
+                title="Поиск клиента в базе"
+              >
+                <Phone className="h-3 w-3 text-slate-400" />
+                {formatPhonePretty(client.phone)}
+              </a>
+            )}
 
             <div className="flex items-center gap-1.5 mt-2 flex-wrap">
               <span
@@ -221,16 +244,29 @@ export function ClientPanel({
                 {SEGMENT_LABEL[client.segment] || "Клиент"}
               </span>
 
-              <a
-                href={`/clients/${conversation.clientId}`}
-                target="_blank"
-                rel="noreferrer"
-                className="px-2.5 py-0.5 rounded-full font-semibold text-[10px] text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 hover:border-indigo-300 flex items-center gap-1 cursor-pointer transition-all hover:shadow-xs active:scale-95"
-                title="Открыть карточку клиента с историей посещений"
-              >
-                <CheckCircle2 className="h-3 w-3 text-indigo-600" />
-                Визитов: {visitedCount}
-              </a>
+              {client.dbClientId || (client.id && !client.id.includes("@")) ? (
+                <a
+                  href={`/clients/${client.dbClientId || client.id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-2.5 py-0.5 rounded-full font-semibold text-[10px] text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 hover:border-indigo-300 flex items-center gap-1 cursor-pointer transition-all hover:shadow-xs active:scale-95"
+                  title="Открыть карточку клиента с историей посещений"
+                >
+                  <CheckCircle2 className="h-3 w-3 text-indigo-600" />
+                  Визитов: {visitedCount}
+                </a>
+              ) : (
+                <a
+                  href={`/clients?search=${encodeURIComponent((client.phone || "").slice(-10))}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-2.5 py-0.5 rounded-full font-semibold text-[10px] text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 flex items-center gap-1 cursor-pointer transition-all"
+                  title="Поиск клиента в базе"
+                >
+                  <CheckCircle2 className="h-3 w-3 text-slate-500" />
+                  Визитов: {visitedCount}
+                </a>
+              )}
             </div>
           </div>
         </div>

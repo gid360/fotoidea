@@ -185,8 +185,8 @@ export function ConversationsClient() {
     queryKey: ["conversation-detail", activeSelectedId],
     queryFn: () => fetch(`/api/conversations/${activeSelectedId}`).then((r) => r.json()),
     enabled: !!activeSelectedId,
-    staleTime: 1000 * 60 * 3,
-    refetchInterval: 8000,
+    staleTime: 2000,
+    refetchInterval: 6000,
   });
 
   const filteredConversations = useMemo(() => {
@@ -214,8 +214,28 @@ export function ConversationsClient() {
     });
   }, [filteredConversations, pinnedIds]);
 
+  // Mark conversation as read whenever activeSelectedId is selected
+  useEffect(() => {
+    if (!activeSelectedId) return;
+
+    // Immediately clear unreadCount locally
+    qc.setQueryData<ConversationListItemDto[]>(["conversations"], (old) => {
+      if (!old) return old;
+      return old.map((c) => (c.id === activeSelectedId ? { ...c, unreadCount: 0 } : c));
+    });
+
+    // Send read request to server / Evolution API
+    fetch(`/api/conversations/${encodeURIComponent(activeSelectedId)}/read`, {
+      method: "POST",
+    }).catch((err) => console.error("Error marking chat read:", err));
+  }, [activeSelectedId, qc]);
+
   const handleMarkAllRead = async () => {
     try {
+      qc.setQueryData<ConversationListItemDto[]>(["conversations"], (old) => {
+        if (!old) return old;
+        return old.map((c) => ({ ...c, unreadCount: 0 }));
+      });
       await fetch("/api/whatsapp/chats/read-all", { method: "POST" });
       refetchConversations();
     } catch (e) {
@@ -392,7 +412,18 @@ export function ConversationsClient() {
                       </p>
 
                       <div className="flex items-center justify-between mt-1">
-                        <span className="text-[10px] text-slate-400 font-mono">
+                        <span
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (c.client.dbClientId || (c.client.id && !c.client.id.includes("@"))) {
+                              window.open(`/clients/${c.client.dbClientId || c.client.id}`, "_blank");
+                            } else if (c.client.phone) {
+                              window.open(`/clients?search=${encodeURIComponent(c.client.phone.slice(-10))}`, "_blank");
+                            }
+                          }}
+                          className="text-[10px] text-slate-400 hover:text-indigo-600 hover:underline font-mono cursor-pointer transition-colors"
+                          title="Открыть карточку клиента в базе"
+                        >
                           {c.client.name && c.client.name !== c.client.phone && c.client.name !== formatPhonePretty(c.client.phone)
                             ? formatPhonePretty(c.client.phone)
                             : ""}

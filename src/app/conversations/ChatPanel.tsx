@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Send, Search, RefreshCw, Paperclip, Smile, Check, CheckCheck,
   UserPlus, FileText, X, ArrowLeft, Phone, Info, Image as ImageIcon, Play, Pause, Volume2, Video, Download,
-  Mic, Trash2, CornerUpRight, Share2, Pencil,
+  Mic, Trash2, CornerUpRight, Share2, Pencil, User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -245,11 +245,31 @@ export function ChatPanel({
   }
 
   const client = conversation.client;
-  const messages = conversation.messages || [];
+  const [optimisticMessages, setOptimisticMessages] = useState<MessageDto[]>([]);
+
+  useEffect(() => {
+    setOptimisticMessages([]);
+  }, [conversation.id]);
+
+  const mergedMessages = useMemo(() => {
+    const serverMsgs = conversation.messages || [];
+    if (optimisticMessages.length === 0) return serverMsgs;
+
+    const serverMsgMap = new Set(
+      serverMsgs.map((m) => `${(m.text || "").trim()}-${m.direction}`)
+    );
+    const pendingOptimistic = optimisticMessages.filter(
+      (om) => !serverMsgMap.has(`${(om.text || "").trim()}-${om.direction}`)
+    );
+
+    return [...serverMsgs, ...pendingOptimistic].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+  }, [conversation.messages, optimisticMessages]);
 
   const filteredMessages = searchQuery.trim()
-    ? messages.filter((m) => m.text?.toLowerCase().includes(searchQuery.toLowerCase()))
-    : messages;
+    ? mergedMessages.filter((m) => m.text?.toLowerCase().includes(searchQuery.toLowerCase()))
+    : mergedMessages;
 
   const [visibleMessagesCount, setVisibleMessagesCount] = useState(15);
   const [isLoadingOlder, setIsLoadingOlder] = useState(false);
@@ -460,22 +480,58 @@ export function ChatPanel({
 
     mediaRecorderRef.current.onstop = async () => {
       const durationStr = formatDuration(recordingSeconds);
+      const text = `🎤 Голосовое сообщение (${durationStr})`;
+      const tempId = `temp-${Date.now()}`;
+
+      const optimisticMsg: MessageDto = {
+        id: tempId,
+        conversationId: conversation.id,
+        direction: "OUTGOING",
+        text,
+        mediaUrl: null,
+        fileName: null,
+        status: "PENDING",
+        createdAt: new Date().toISOString(),
+        reactions: [],
+        author: null,
+      };
+
+      setOptimisticMessages((prev) => [...prev, optimisticMsg]);
       setSending(true);
+
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 50);
+
+      const targetPhone = client.phone || conversation.remoteJid || conversation.id;
+
       try {
-        await fetch("/api/whatsapp/messages", {
+        const res = await fetch("/api/whatsapp/messages", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            phone: client.phone,
-            body: `🎤 Голосовое сообщение (${durationStr})`,
+            phone: targetPhone,
+            body: text,
             clientId: client.id,
           }),
         });
-        setTimeout(() => {
+
+        if (res.ok) {
+          setOptimisticMessages((prev) =>
+            prev.map((m) => (m.id === tempId ? { ...m, status: "SENT" } : m))
+          );
           onRefresh();
-        }, 800);
+          setTimeout(() => onRefresh(), 1500);
+        } else {
+          setOptimisticMessages((prev) =>
+            prev.map((m) => (m.id === tempId ? { ...m, status: "FAILED" } : m))
+          );
+        }
       } catch (err) {
         console.error("Error sending voice message:", err);
+        setOptimisticMessages((prev) =>
+          prev.map((m) => (m.id === tempId ? { ...m, status: "FAILED" } : m))
+        );
       } finally {
         setSending(false);
       }
@@ -496,24 +552,60 @@ export function ChatPanel({
   }
 
   async function handleSend() {
-    if (!inputText.trim() || sending) return;
+    const text = inputText.trim();
+    if (!text || sending) return;
+
+    const tempId = `temp-${Date.now()}`;
+    const optimisticMsg: MessageDto = {
+      id: tempId,
+      conversationId: conversation.id,
+      direction: "OUTGOING",
+      text,
+      mediaUrl: null,
+      fileName: null,
+      status: "PENDING",
+      createdAt: new Date().toISOString(),
+      reactions: [],
+      author: null,
+    };
+
+    setOptimisticMessages((prev) => [...prev, optimisticMsg]);
+    setInputText("");
     setSending(true);
+
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 50);
+
+    const targetPhone = client.phone || conversation.remoteJid || conversation.id;
+
     try {
-      await fetch("/api/whatsapp/messages", {
+      const res = await fetch("/api/whatsapp/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          phone: client.phone,
-          body: inputText,
+          phone: targetPhone,
+          body: text,
           clientId: client.id,
         }),
       });
-      setInputText("");
-      setTimeout(() => {
+
+      if (res.ok) {
+        setOptimisticMessages((prev) =>
+          prev.map((m) => (m.id === tempId ? { ...m, status: "SENT" } : m))
+        );
         onRefresh();
-      }, 800);
+        setTimeout(() => onRefresh(), 1500);
+      } else {
+        setOptimisticMessages((prev) =>
+          prev.map((m) => (m.id === tempId ? { ...m, status: "FAILED" } : m))
+        );
+      }
     } catch (e) {
       console.error("Error sending message:", e);
+      setOptimisticMessages((prev) =>
+        prev.map((m) => (m.id === tempId ? { ...m, status: "FAILED" } : m))
+      );
     } finally {
       setSending(false);
     }
@@ -562,9 +654,30 @@ export function ChatPanel({
             <div className="flex items-center gap-1.5 flex-wrap">
               <h2 className="font-bold text-xs sm:text-sm truncate text-slate-900">{clientDisplayName(client)}</h2>
               {formatPhonePretty(client.phone) && (
-                <span className="text-[10px] sm:text-xs px-1.5 py-0.2 rounded-full bg-slate-100 font-mono text-slate-600 truncate">
-                  {formatPhonePretty(client.phone)}
-                </span>
+                client.dbClientId || (client.id && !client.id.includes("@")) ? (
+                  <a
+                    href={`/clients/${client.dbClientId || client.id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 border border-slate-200 font-mono text-slate-700 transition-all flex items-center gap-1 cursor-pointer font-medium"
+                    title="Открыть карточку клиента в базе"
+                  >
+                    <User className="h-3 w-3 text-slate-500 hover:text-indigo-600" />
+                    {formatPhonePretty(client.phone)}
+                  </a>
+                ) : (
+                  <a
+                    href={`/clients?search=${encodeURIComponent((client.phone || "").slice(-10))}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full bg-slate-100 hover:bg-slate-200 font-mono text-slate-600 transition-colors cursor-pointer"
+                    title="Поиск клиента в базе"
+                  >
+                    {formatPhonePretty(client.phone)}
+                  </a>
+                )
               )}
             </div>
             <p className="text-[10px] sm:text-[11px] text-muted-foreground truncate">

@@ -35,11 +35,17 @@ interface DashboardData {
 }
 
 const LOYALTY_COLOR: Record<string, string> = {
-  NEW:     "bg-blue-100 text-blue-700",
-  REGULAR: "bg-green-100 text-green-700",
-  LOST:    "bg-red-100 text-red-700",
+  NEW:     "bg-blue-100 text-blue-700 dark:bg-blue-950/70 dark:text-blue-300",
+  ACTIVE:  "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300",
+  REGULAR: "bg-purple-100 text-purple-700 dark:bg-purple-950/70 dark:text-purple-300",
+  LOST:    "bg-red-100 text-red-700 dark:bg-red-950/70 dark:text-red-300",
 };
-const LOYALTY_LABEL: Record<string, string> = { NEW: "Новый", REGULAR: "Постоянный", LOST: "Потерянный" };
+const LOYALTY_LABEL: Record<string, string> = {
+  NEW: "Новый",
+  ACTIVE: "Действующий",
+  REGULAR: "Постоянный",
+  LOST: "Потерянный",
+};
 
 export function DashboardClient() {
   const { data: session } = useSession();

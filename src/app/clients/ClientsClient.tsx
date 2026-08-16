@@ -10,12 +10,7 @@ import { cn, formatMoney, formatDate } from "@/lib/utils";
 import { LoyaltyTag } from "@prisma/client";
 import { CreateClientDialog } from "./CreateClientDialog";
 import { AltegioImportDialog } from "@/components/AltegioImportDialog";
-
-const LOYALTY_CONFIG: Record<LoyaltyTag, { label: string; className: string }> = {
-  NEW:     { label: "Новый",      className: "bg-blue-100 text-blue-700" },
-  REGULAR: { label: "Постоянный", className: "bg-green-100 text-green-700" },
-  LOST:    { label: "Потерянный", className: "bg-red-100 text-red-700" },
-};
+import { LOYALTY_CONFIG } from "@/lib/loyalty";
 
 interface Client {
   id: string;
@@ -110,6 +105,7 @@ export function ClientsClient() {
   const tags: { value: LoyaltyTag | ""; label: string }[] = [
     { value: "", label: "Все" },
     { value: "NEW", label: "Новые" },
+    { value: "ACTIVE", label: "Действующие" },
     { value: "REGULAR", label: "Постоянные" },
     { value: "LOST", label: "Потерянные" },
   ];

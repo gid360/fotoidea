@@ -2,32 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { subDays } from "date-fns";
 import { LoyaltyTag } from "@prisma/client";
 import { normalizePhone } from "@/lib/utils";
-
-async function recalcLoyaltyTag(clientId: string): Promise<LoyaltyTag> {
-  const now = new Date();
-  const days45ago = subDays(now, 45);
-  const days30ago = subDays(now, 30);
-
-  const recentVisits = await prisma.booking.count({
-    where: { clientId, status: "ATTENDED", createdAt: { gte: days45ago } },
-  });
-
-  if (recentVisits >= 3) return LoyaltyTag.REGULAR;
-
-  const lastVisit = await prisma.booking.findFirst({
-    where: { clientId, status: "ATTENDED" },
-    orderBy: { createdAt: "desc" },
-  });
-
-  if (lastVisit && lastVisit.createdAt < days30ago) {
-    return LoyaltyTag.LOST;
-  }
-
-  return LoyaltyTag.NEW;
-}
+import { calculateClientLoyaltyTag } from "@/lib/loyalty";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
@@ -59,7 +36,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (!client) return NextResponse.json({ error: "Не найдено" }, { status: 404 });
 
   // Пересчитываем тег лояльности при каждом просмотре
-  const newTag = await recalcLoyaltyTag(id);
+  const newTag = calculateClientLoyaltyTag({
+    createdAt: client.createdAt,
+    firstVisit: client.firstVisit,
+    lastVisit: client.lastVisit,
+    bookingsCount: client.bookings.length,
+    bookings: client.bookings,
+  });
   if (newTag !== client.loyaltyTag) {
     await prisma.client.update({ where: { id }, data: { loyaltyTag: newTag } });
     client.loyaltyTag = newTag;

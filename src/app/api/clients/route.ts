@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { LoyaltyTag } from "@prisma/client";
 import { normalizePhone } from "@/lib/utils";
+import { calculateClientLoyaltyTag } from "@/lib/loyalty";
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -107,9 +108,25 @@ export async function GET(req: NextRequest) {
       return sum + tot;
     }, 0);
 
+    const loyaltyTag = calculateClientLoyaltyTag({
+      createdAt: c.createdAt,
+      firstVisit,
+      lastVisit,
+      bookingsCount: c._count.bookings,
+      bookings: c.bookings,
+    });
+
+    if (loyaltyTag !== c.loyaltyTag) {
+      prisma.client.update({
+        where: { id: c.id },
+        data: { loyaltyTag },
+      }).catch(() => {});
+    }
+
     const { bookings, ...rest } = c;
     return {
       ...rest,
+      loyaltyTag,
       totalSales,
       firstVisit,
       lastVisit,

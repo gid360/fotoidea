@@ -17,7 +17,6 @@ const nav = [
   { label: "Сообщения",     shortLabel: "Чаты",       href: "/conversations",    icon: MessageCircle, adminOnly: true },
   { label: "Расписание",     shortLabel: "Записи",     href: "/schedule",         icon: CalendarDays, createHref: "/schedule?new=1" },
   { label: "Клиенты",        shortLabel: "Клиенты",    href: "/clients",          icon: Users, createHref: "/clients?new=1" },
-  { label: "Воронка продаж", shortLabel: "Воронка",    href: "/crm",              icon: ShoppingBag },
   { label: "Услуги",           shortLabel: "Услуги",     href: "/subscriptions/plans", icon: Camera },
   { label: "Касса",          shortLabel: "Касса",      href: "/cashbox/transactions", icon: Wallet },
   { label: "Аналитика",      shortLabel: "Отчеты",     href: "/analytics",        icon: BarChart3, superadminOnly: true },

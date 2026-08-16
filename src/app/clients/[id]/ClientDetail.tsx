@@ -20,12 +20,7 @@ import { Switch } from "@/components/ui/switch";
 import { cn, formatMoney, formatDate, formatDateTime } from "@/lib/utils";
 import { toast } from "@/lib/use-toast";
 import { LoyaltyTag, BookingStatus } from "@prisma/client";
-
-const LOYALTY_CONFIG: Record<LoyaltyTag, { label: string; className: string }> = {
-  NEW:     { label: "Новый",      className: "bg-blue-100 text-blue-800" },
-  REGULAR: { label: "Постоянный", className: "bg-green-100 text-green-800" },
-  LOST:    { label: "Потерянный", className: "bg-red-100 text-red-800" },
-};
+import { LOYALTY_CONFIG } from "@/lib/loyalty";
 
 const FUNNEL_STAGE_CONFIG: Record<string, { label: string; className: string }> = {
   NEW:          { label: "Новый",           className: "bg-slate-100 text-slate-800 dark:bg-slate-900/60 dark:text-slate-300 border border-slate-200 dark:border-slate-800" },

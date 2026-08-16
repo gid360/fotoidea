@@ -22,7 +22,7 @@ export async function GET(
   }
 
   let phone = remoteJid.split("@")[0].replace(/\D/g, "");
-
+  let resolvedPhone = (phone && phone.length <= 12) ? phone : "";
   let chatProfilePic: string | null = null;
   let pushName: string | null = null;
 
@@ -31,39 +31,93 @@ export async function GET(
     const headers = { "Content-Type": "application/json", "apikey": wa.apiKey };
 
     try {
-      // 1. Try exact remoteJid for messages
-      let res = await fetch(`${cleanServerUrl}/chat/findMessages/${wa.instanceName}`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ where: { key: { remoteJid } }, limit: 50 }),
-        signal: AbortSignal.timeout(8000),
-      });
+      const targetJids = new Set<string>();
+      targetJids.add(remoteJid);
 
-      let rawMsgs: any[] = [];
-      if (res.ok) {
-        const data = await res.json();
-        rawMsgs = data?.messages?.records || data?.records || data?.messages || (Array.isArray(data) ? data : []);
+      // 1. Check contact book to resolve phone <-> LID mapping
+      try {
+        const ctRes = await fetch(`${cleanServerUrl}/chat/findContacts/${wa.instanceName}`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({}),
+          signal: AbortSignal.timeout(5000),
+        });
+        if (ctRes.ok) {
+          const contacts = await ctRes.json();
+          if (Array.isArray(contacts)) {
+            const matched = contacts.find((c: any) => {
+              const rawId = c.id || c.remoteJid || "";
+              const lidClean = c.lid?.split("@")[0] || "";
+              return (
+                rawId === remoteJid ||
+                (phone && rawId.includes(phone)) ||
+                c.remoteJidAlt === remoteJid ||
+                (lidClean && remoteJid.includes(lidClean))
+              );
+            });
+            if (matched) {
+              if (matched.pushName || matched.name || matched.verifiedName) {
+                pushName = matched.pushName || matched.name || matched.verifiedName;
+              }
+              if (matched.lid) {
+                const lidJid = matched.lid.includes("@") ? matched.lid : `${matched.lid}@lid`;
+                targetJids.add(lidJid);
+              }
+              const p = (matched.remoteJid || matched.id || "").split("@")[0].replace(/\D/g, "");
+              if (p && p.length <= 12) {
+                resolvedPhone = p;
+                targetJids.add(`${p}@s.whatsapp.net`);
+              }
+            }
+          }
+        }
+      } catch (e) {
+        // ignore contacts fetch error
       }
 
-      // 2. Fallback to phone@s.whatsapp.net if no messages found
-      if ((!Array.isArray(rawMsgs) || rawMsgs.length === 0) && phone && phone.length <= 12) {
-        const altJid = `${phone}@s.whatsapp.net`;
-        if (altJid !== remoteJid) {
-          res = await fetch(`${cleanServerUrl}/chat/findMessages/${wa.instanceName}`, {
-            method: "POST",
-            headers,
-            body: JSON.stringify({ where: { key: { remoteJid: altJid } }, limit: 50 }),
-            signal: AbortSignal.timeout(8000),
-          });
-          if (res.ok) {
-            const data = await res.json();
-            rawMsgs = data?.messages?.records || data?.records || data?.messages || (Array.isArray(data) ? data : []);
+      // Also check if remoteJid has clean phone digits
+      if (phone && phone.length <= 12) {
+        resolvedPhone = phone;
+        targetJids.add(`${phone}@s.whatsapp.net`);
+      }
+
+      // 2. Fetch messages for ALL candidate JIDs in parallel
+      const jidList = Array.from(targetJids);
+      const msgFetchResults = await Promise.all(
+        jidList.map(async (jid) => {
+          try {
+            const res = await fetch(`${cleanServerUrl}/chat/findMessages/${wa.instanceName}`, {
+              method: "POST",
+              headers,
+              body: JSON.stringify({ where: { key: { remoteJid: jid } }, limit: 100 }),
+              signal: AbortSignal.timeout(8000),
+            });
+            if (res.ok) {
+              const data = await res.json();
+              return data?.messages?.records || data?.records || data?.messages || (Array.isArray(data) ? data : []);
+            }
+          } catch (err) {
+            console.error("Error fetching messages for JID:", jid, err);
+          }
+          return [];
+        })
+      );
+
+      const rawMsgsMap = new Map<string, any>();
+      for (const list of msgFetchResults) {
+        if (Array.isArray(list)) {
+          for (const m of list) {
+            const mId = m.key?.id || m.id;
+            if (mId && !rawMsgsMap.has(mId)) {
+              rawMsgsMap.set(mId, m);
+            }
           }
         }
       }
+      const rawMsgs = Array.from(rawMsgsMap.values());
 
-      // Extract real phone number and pushName if found in message keys
-      if (Array.isArray(rawMsgs) && rawMsgs.length > 0) {
+      // Extract phone number and pushName if found in message keys
+      if (rawMsgs.length > 0) {
         for (const m of rawMsgs) {
           if (!pushName && m.pushName && !m.pushName.match(/^\d+$/) && m.pushName !== "Você") {
             pushName = m.pushName;
@@ -71,18 +125,17 @@ export async function GET(
           if (m.key?.remoteJidAlt) {
             const altPhone = m.key.remoteJidAlt.split("@")[0].replace(/\D/g, "");
             if (altPhone && altPhone.length <= 12) {
-              phone = altPhone;
+              resolvedPhone = altPhone;
             }
           }
         }
 
-        // 1. Build reactions map from standalone reaction messages or attached reaction fields
+        // Build reactions map
         const reactionsMap = new Map<string, string[]>();
         const editedTargetIds = new Set<string>();
 
         for (const m of rawMsgs) {
           const msg = m.message || m;
-          // 1. Reactions
           if (msg?.reactionMessage?.key?.id && msg?.reactionMessage?.text) {
             const targetId = msg.reactionMessage.key.id;
             const emoji = msg.reactionMessage.text;
@@ -111,7 +164,6 @@ export async function GET(
             }
           }
 
-          // 2. Edit targets from encrypted packets or protocol messages
           const editTargetId = msg?.secretEncryptedMessage?.targetMessageKey?.id
             || msg?.protocolMessage?.key?.id
             || msg?.editedMessage?.message?.protocolMessage?.key?.id
@@ -121,7 +173,7 @@ export async function GET(
           }
         }
 
-        // 2. Process messages
+        // Process message contents
         const processedMsgs = await Promise.all(
           rawMsgs.map(async (m: any) => {
             const msg = m.message || m;
@@ -132,7 +184,6 @@ export async function GET(
               || msg?.editedMessage?.message?.protocolMessage?.editedMessage
               || msg;
 
-            // Ignore standalone reaction notifications and technical encrypted messages
             if (realMsg?.reactionMessage && !realMsg?.conversation && !realMsg?.extendedTextMessage) {
               return null;
             }
@@ -214,8 +265,6 @@ export async function GET(
             }
 
             let mediaUrl: string | null = null;
-
-            // Use on-demand streaming media route to prevent slow blocking base64 downloads
             if (mediaType) {
               const msgId = m.key?.id || m.id;
               const msgJid = m.key?.remoteJid || remoteJid;
@@ -263,41 +312,17 @@ export async function GET(
           })
         );
 
-        messages = (processedMsgs.filter(Boolean) as any[]).sort(
-          (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-        );
+        messages = (processedMsgs.filter(Boolean) as any[]);
       }
 
-      // 3. Query phonebook contact if pushName is missing
-      if (!pushName && phone && phone.length <= 12) {
-        try {
-          const ctRes = await fetch(`${cleanServerUrl}/chat/findContacts/${wa.instanceName}`, {
-            method: "POST",
-            headers,
-            body: JSON.stringify({}),
-            signal: AbortSignal.timeout(5000),
-          });
-          if (ctRes.ok) {
-            const contacts = await ctRes.json();
-            if (Array.isArray(contacts)) {
-              const matched = contacts.find((c: any) => (c.remoteJid || c.id || "").includes(phone));
-              if (matched) {
-                pushName = matched.pushName || matched.name || matched.verifiedName || null;
-              }
-            }
-          }
-        } catch (e) {
-          // ignore contact fetch error
-        }
-      }
-
-      // 4. Fetch profile picture if available
-      if (phone && phone.length <= 12) {
+      // Profile picture fetch
+      const activePhone = resolvedPhone || (phone && phone.length <= 12 ? phone : "");
+      if (activePhone) {
         try {
           const picRes = await fetch(`${cleanServerUrl}/chat/fetchProfilePictureUrl/${wa.instanceName}`, {
             method: "POST",
             headers,
-            body: JSON.stringify({ number: phone }),
+            body: JSON.stringify({ number: activePhone }),
             signal: AbortSignal.timeout(5000),
           });
           if (picRes.ok) {
@@ -307,7 +332,7 @@ export async function GET(
             }
           }
         } catch (e) {
-          // ignore profile picture fetch error
+          // ignore
         }
       }
     } catch (e) {
@@ -315,32 +340,94 @@ export async function GET(
     }
   }
 
+  const activeSearchPhone = resolvedPhone || (phone && phone.length <= 12 ? phone : "");
+
+  // Also query DB for client & lead
   const dbClient = await prisma.client.findFirst({
-    where: { phone: { contains: phone.slice(-10) } },
+    where: {
+      OR: [
+        activeSearchPhone ? { phone: { contains: activeSearchPhone.slice(-10) } } : undefined,
+        phone && phone.length <= 12 ? { phone: { contains: phone.slice(-10) } } : undefined,
+      ].filter(Boolean) as any,
+    },
     include: {
       bookings: {
         include: {
           classEvent: {
             include: {
               direction: true,
-            }
-          }
-        }
-      }
-    }
+            },
+          },
+        },
+      },
+    },
   });
 
   const dbLead = await prisma.lead.findFirst({
-    where: { phone: { contains: phone.slice(-10) } },
+    where: {
+      OR: [
+        activeSearchPhone ? { phone: { contains: activeSearchPhone.slice(-10) } } : undefined,
+        phone && phone.length <= 12 ? { phone: { contains: phone.slice(-10) } } : undefined,
+      ].filter(Boolean) as any,
+    },
   });
+
+  // Query local PostgreSQL for any outgoing messages sent through CRM that might be missing or syncing
+  try {
+    const localDbMsgs = await prisma.whatsAppMessage.findMany({
+      where: {
+        OR: [
+          activeSearchPhone ? { phone: { contains: activeSearchPhone.slice(-10) } } : undefined,
+          dbClient?.id ? { clientId: dbClient.id } : undefined,
+        ].filter(Boolean) as any,
+        createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+      },
+      orderBy: { createdAt: "asc" },
+    });
+
+    for (const localMsg of localDbMsgs) {
+      const localTime = new Date(localMsg.createdAt).getTime();
+      const localBody = (localMsg.body || "").trim();
+
+      // Check if already present in messages
+      const alreadyPresent = messages.some((m) => {
+        if (m.direction !== "OUTGOING") return false;
+        const msgTime = new Date(m.createdAt).getTime();
+        const msgText = (m.text || "").trim();
+        return Math.abs(msgTime - localTime) < 60000 && msgText === localBody;
+      });
+
+      if (!alreadyPresent && localBody) {
+        messages.push({
+          id: localMsg.id,
+          conversationId: id,
+          direction: "OUTGOING",
+          text: localBody,
+          mediaUrl: null,
+          mediaType: null,
+          fileName: null,
+          status: localMsg.status === "SENT" ? "SENT" : localMsg.status === "ERROR" ? "FAILED" : "PENDING",
+          createdAt: localMsg.createdAt.toISOString(),
+          isEdited: false,
+          reactions: [],
+          author: null,
+        });
+      }
+    }
+  } catch (e) {
+    console.error("Error loading local DB messages:", e);
+  }
+
+  // Sort all messages chronologically
+  messages.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
   const now = new Date();
   const allBookings = dbClient?.bookings || [];
-  const visitedCount = allBookings.filter(b => b.status !== "CANCELLED").length;
+  const visitedCount = allBookings.filter((b) => b.status !== "CANCELLED").length;
   const upcomingBookings = allBookings
-    .filter(b => b.classEvent && new Date(b.classEvent.startAt) >= now && b.status !== "CANCELLED")
+    .filter((b) => b.classEvent && new Date(b.classEvent.startAt) >= now && b.status !== "CANCELLED")
     .sort((a, b) => new Date(a.classEvent.startAt).getTime() - new Date(b.classEvent.startAt).getTime())
-    .map(b => ({
+    .map((b) => ({
       id: b.id,
       startAt: b.classEvent.startAt.toISOString(),
       directionName: b.classEvent.direction.name,
@@ -350,16 +437,18 @@ export async function GET(
   let displayName = dbClient?.firstName
     ? `${dbClient.firstName} ${dbClient.lastName || ""}`.trim()
     : (dbLead?.name || pushName || null);
-  if (displayName && (
-    displayName.toLowerCase() === "fotoidea" ||
-    displayName.includes("@c.us") ||
-    displayName.includes("@g.us") ||
-    /^[+\d\s().-]+$/.test(displayName)
-  )) {
+  if (
+    displayName &&
+    (displayName.toLowerCase() === "fotoidea" ||
+      displayName.includes("@c.us") ||
+      displayName.includes("@g.us") ||
+      /^[+\d\s().-]+$/.test(displayName))
+  ) {
     displayName = null;
   }
 
   const avatarUrl = dbClient?.photoUrl || chatProfilePic || null;
+  const finalPhone = activeSearchPhone || (dbClient?.phone?.replace(/\D/g, "") || "");
 
   const detail = {
     id,
@@ -371,9 +460,10 @@ export async function GET(
     lastMessageAt: messages[messages.length - 1]?.createdAt || new Date().toISOString(),
     client: {
       id: dbClient?.id || id,
-      phone,
+      dbClientId: dbClient?.id || null,
+      phone: finalPhone,
       name: displayName,
-      segment: dbClient?.loyaltyTag === "NEW" ? "NEW" : dbClient?.loyaltyTag === "LOST" ? "FORMER" : "ACTIVE",
+      segment: dbClient?.loyaltyTag || "NEW",
       lastVisitAt: dbClient?.lastVisit ? dbClient.lastVisit.toISOString() : null,
       channel: "WHATSAPP",
       avatarUrl,
@@ -382,17 +472,40 @@ export async function GET(
       visitedCount,
       upcomingBookings,
     },
-    funnelStage: dbClient ? {
-      id: dbClient.loyaltyTag || "ACTIVE",
-      name: dbClient.loyaltyTag === "NEW" ? "Новый" : dbClient.loyaltyTag === "LOST" ? "Потерянный" : "Действующий",
-      order: 1,
-      color: dbClient.loyaltyTag === "NEW" ? "#3b82f6" : dbClient.loyaltyTag === "LOST" ? "#ef4444" : "#144d37",
-    } : {
-      id: dbLead?.status || "NEW",
-      name: dbLead?.status === "IN_PROGRESS" ? "В работе" : dbLead?.status === "SUCCESS" ? "Успешно" : dbLead?.status === "REJECTED" ? "Отказ" : "Новый лид",
-      order: 1,
-      color: dbLead?.status === "SUCCESS" ? "#144d37" : dbLead?.status === "REJECTED" ? "#ef4444" : "#3b82f6",
-    },
+    funnelStage: dbClient
+      ? {
+          id: dbClient.loyaltyTag || "NEW",
+          name:
+            dbClient.loyaltyTag === "NEW"
+              ? "Новый"
+              : dbClient.loyaltyTag === "ACTIVE"
+              ? "Действующий"
+              : dbClient.loyaltyTag === "REGULAR"
+              ? "Постоянный"
+              : "Потерянный",
+          order: 1,
+          color:
+            dbClient.loyaltyTag === "NEW"
+              ? "#2563eb"
+              : dbClient.loyaltyTag === "ACTIVE"
+              ? "#059669"
+              : dbClient.loyaltyTag === "REGULAR"
+              ? "#7c3aed"
+              : "#dc2626",
+        }
+      : {
+          id: dbLead?.status || "NEW",
+          name:
+            dbLead?.status === "IN_PROGRESS"
+              ? "В работе"
+              : dbLead?.status === "SUCCESS"
+              ? "Успешно"
+              : dbLead?.status === "REJECTED"
+              ? "Отказ"
+              : "Новый лид",
+          order: 1,
+          color: dbLead?.status === "SUCCESS" ? "#059669" : dbLead?.status === "REJECTED" ? "#dc2626" : "#2563eb",
+        },
     assignedAdmin: null,
     messages,
     notes: (() => {
@@ -437,7 +550,12 @@ export async function PATCH(
       data: {
         firstName: body.name,
         lastName: "",
-        phone: phone.length <= 12 ? (phone.startsWith("7") || phone.startsWith("8") ? `+7${phone.slice(-10)}` : `+${phone}`) : `+${phone}`,
+        phone:
+          phone.length <= 12
+            ? phone.startsWith("7") || phone.startsWith("8")
+              ? `+7${phone.slice(-10)}`
+              : `+${phone}`
+            : `+${phone}`,
       },
     });
   } else if (client && body.name) {
@@ -447,10 +565,16 @@ export async function PATCH(
     });
   }
 
-  // Update funnel stage (both on Client if client exists, and Lead if lead exists)
   if (body.funnelStageId) {
     if (client) {
-      const loyaltyTag = body.funnelStageId === "NEW" ? "NEW" : body.funnelStageId === "LOST" ? "LOST" : "REGULAR";
+      const loyaltyTag =
+        body.funnelStageId === "NEW"
+          ? "NEW"
+          : body.funnelStageId === "ACTIVE"
+          ? "ACTIVE"
+          : body.funnelStageId === "REGULAR"
+          ? "REGULAR"
+          : "LOST";
       await prisma.client.update({
         where: { id: client.id },
         data: { loyaltyTag },

@@ -7,7 +7,7 @@ import {
   CalendarDays,
   MessageCircle,
   Users,
-  ShoppingBag,
+  Wallet,
   Menu,
 } from "lucide-react";
 
@@ -19,7 +19,7 @@ const bottomNavItems = [
   { label: "Расписание", href: "/schedule", icon: CalendarDays },
   { label: "Сообщения", href: "/conversations", icon: MessageCircle },
   { label: "Клиенты", href: "/clients", icon: Users },
-  { label: "Воронка", href: "/crm", icon: ShoppingBag },
+  { label: "Касса", href: "/cashbox/transactions", icon: Wallet },
 ];
 
 export function MobileBottomNav({ onOpenMenu }: MobileBottomNavProps) {

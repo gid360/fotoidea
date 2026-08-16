@@ -22,9 +22,10 @@ export interface UpcomingBookingDto {
 
 export interface ClientDto {
   id: string;
+  dbClientId?: string | null;
   phone: string;
   name: string | null;
-  segment: "NEW" | "ACTIVE" | "FORMER";
+  segment: "NEW" | "ACTIVE" | "REGULAR" | "LOST" | "FORMER";
   lastVisitAt: string | null;
   channel: "WHATSAPP" | "INSTAGRAM" | "WIDGET" | "";
   avatarUrl: string | null;
@@ -82,16 +83,20 @@ export interface ConversationDetailDto extends Omit<ConversationListItemDto, "me
   messages: MessageDto[];
 }
 
-export const SEGMENT_LABEL: Record<ClientDto["segment"], string> = {
+export const SEGMENT_LABEL: Record<string, string> = {
   NEW: "Новый",
   ACTIVE: "Действующий",
-  FORMER: "Бывший",
+  REGULAR: "Постоянный",
+  LOST: "Потерянный",
+  FORMER: "Потерянный",
 };
 
-export const SEGMENT_COLOR: Record<ClientDto["segment"], string> = {
-  NEW: "#94a3b8",
-  ACTIVE: "#144d37",
-  FORMER: "#eab308",
+export const SEGMENT_COLOR: Record<string, string> = {
+  NEW: "#2563eb",
+  ACTIVE: "#059669",
+  REGULAR: "#7c3aed",
+  LOST: "#dc2626",
+  FORMER: "#dc2626",
 };
 
 export function formatPhonePretty(phone: string | null | undefined): string {
