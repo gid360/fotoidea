@@ -637,7 +637,7 @@ export function CreateClassDialog({ open, onClose, onCreated, selectedDate, sele
 
             <div>
               <Label className="text-xs">Стоимость услуги (₸)</Label>
-              <Input type="number" min="0" step="500" {...register("servicePrice")} className="mt-1 bg-background h-8 text-sm font-semibold" />
+              <Input type="number" min="0" step="any" {...register("servicePrice")} className="mt-1 bg-background h-8 text-sm font-semibold" />
             </div>
 
             {/* Количество человек и расчёт доплаты */}
@@ -675,7 +675,7 @@ export function CreateClassDialog({ open, onClose, onCreated, selectedDate, sele
                   <Input
                     type="number"
                     min="0"
-                    step="500"
+                    step="any"
                     {...register("extraPeopleFee")}
                     className="bg-background h-8 text-sm font-semibold"
                     placeholder="Доплата за человека"
@@ -689,7 +689,7 @@ export function CreateClassDialog({ open, onClose, onCreated, selectedDate, sele
               <Input
                 type="number"
                 min="0"
-                step="500"
+                step="any"
                 placeholder="0"
                 {...register("prepayment")}
                 className="mt-1 bg-background h-8 text-sm font-semibold text-emerald-600 placeholder:text-muted-foreground/50"

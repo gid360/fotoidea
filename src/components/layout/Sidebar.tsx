@@ -8,19 +8,21 @@ import { signOut, useSession } from "next-auth/react";
 import {
   LayoutDashboard, Users, UserCog, CalendarDays, Wallet,
   BarChart3, Settings, LogOut, Plus, Camera,
-  ShoppingBag, MessageCircle, Percent, ChevronLeft, ChevronRight,
+  ShoppingBag, MessageCircle, Percent, ChevronLeft, ChevronRight, CheckSquare, Award,
 } from "lucide-react";
 import { UserRole } from "@prisma/client";
 
 const nav = [
-  { label: "Главная",        shortLabel: "Главная",    href: "/dashboard",        icon: LayoutDashboard },
+  { label: "Главная",        shortLabel: "Главная",    href: "/dashboard",        icon: LayoutDashboard, superadminOnly: true },
   { label: "Сообщения",     shortLabel: "Чаты",       href: "/conversations",    icon: MessageCircle, adminOnly: true },
   { label: "Расписание",     shortLabel: "Записи",     href: "/schedule",         icon: CalendarDays, createHref: "/schedule?new=1" },
+  { label: "Задачи",         shortLabel: "Задачи",     href: "/tasks",            icon: CheckSquare, createHref: "/tasks/new" },
   { label: "Клиенты",        shortLabel: "Клиенты",    href: "/clients",          icon: Users, createHref: "/clients?new=1" },
-  { label: "Услуги",           shortLabel: "Услуги",     href: "/subscriptions/plans", icon: Camera },
+  { label: "Услуги",         shortLabel: "Услуги",     href: "/subscriptions/plans", icon: Camera },
+  { label: "Сертификаты",    shortLabel: "Сертиф.",    href: "/certificates",     icon: Award },
   { label: "Касса",          shortLabel: "Касса",      href: "/cashbox/transactions", icon: Wallet },
   { label: "Аналитика",      shortLabel: "Отчеты",     href: "/analytics",        icon: BarChart3, superadminOnly: true },
-  { label: "Настройки",     shortLabel: "Настройки",  href: "/settings/halls",   icon: Settings, superadminOnly: true },
+  { label: "Настройки",      shortLabel: "Настройки",  href: "/settings/halls",   icon: Settings, superadminOnly: true },
 ];
 
 interface NavItemDef {
@@ -45,14 +47,14 @@ function NavItem({ item, collapsed }: { item: NavItemDef; collapsed: boolean }) 
 
   // Простая ссылка (без детей)
   if (item.href) {
-    // For /subscriptions/plans and /cashbox/transactions treat the whole section as active
+    // For /subscriptions/plans, /certificates, and /cashbox/transactions treat the whole section as active
     const sectionRoot = item.href === "/subscriptions/plans" ? "/subscriptions"
       : item.href.startsWith("/cashbox") ? "/cashbox"
+      : item.href.startsWith("/certificates") ? "/certificates"
       : null;
     const isActive = pathname === item.href ||
       (item.href !== "/dashboard" && isExactOrChild(pathname, item.href)) ||
       (sectionRoot !== null && isExactOrChild(pathname, sectionRoot)) ||
-      (item.href === "/subscriptions/plans" && pathname.startsWith("/certificates")) ||
       (item.href === "/settings/halls" && pathname.startsWith("/settings"));
     const baseClass = cn(
       "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",

@@ -44,7 +44,10 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 const PAYMENT_LABELS: Record<string, string> = {
+  KASPI:   "Kaspi",
+  HALYK:   "Halyk",
   CASH:    "Наличные",
+  MIXED:   "Смешанная",
   CARD:    "Карта / QR",
   DEPOSIT: "Депозит",
 };
@@ -59,7 +62,7 @@ export function TransactionsClient() {
   const [txDialogOpen, setTxDialogOpen] = useState(false);
   const [txType, setTxType] = useState<"INCOME" | "EXPENSE">("INCOME");
   const [txCategory, setTxCategory] = useState<string>("OTHER_INCOME");
-  const [txPaymentMethod, setTxPaymentMethod] = useState<"CASH" | "CARD">("CASH");
+  const [txPaymentMethod, setTxPaymentMethod] = useState<string>("KASPI");
   const [txAmount, setTxAmount] = useState<string>("");
   const [txDescription, setTxDescription] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
@@ -308,25 +311,24 @@ export function TransactionsClient() {
 
             <div>
               <Label className="text-xs">Способ оплаты</Label>
-              <div className="grid grid-cols-2 gap-2 mt-1">
-                <Button
-                  type="button"
-                  variant={txPaymentMethod === "CASH" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setTxPaymentMethod("CASH")}
-                  className="text-xs"
-                >
-                  Наличные
-                </Button>
-                <Button
-                  type="button"
-                  variant={txPaymentMethod === "CARD" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setTxPaymentMethod("CARD")}
-                  className="text-xs"
-                >
-                  Карта / QR
-                </Button>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 mt-1">
+                {[
+                  { id: "KASPI", label: "Kaspi" },
+                  { id: "HALYK", label: "Halyk" },
+                  { id: "CASH",  label: "Наличные" },
+                  { id: "MIXED", label: "Смешанная" },
+                ].map((pm) => (
+                  <Button
+                    key={pm.id}
+                    type="button"
+                    variant={txPaymentMethod === pm.id ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setTxPaymentMethod(pm.id)}
+                    className="text-xs px-2 h-8"
+                  >
+                    {pm.label}
+                  </Button>
+                ))}
               </div>
             </div>
 
@@ -334,8 +336,8 @@ export function TransactionsClient() {
               <Label className="text-xs">Сумма (₸) *</Label>
               <Input
                 type="number"
-                min="1"
-                step="100"
+                min="0.01"
+                step="any"
                 placeholder="5000"
                 value={txAmount}
                 onChange={e => setTxAmount(e.target.value)}

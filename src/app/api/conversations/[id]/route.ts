@@ -467,6 +467,7 @@ export async function GET(
       lastVisitAt: dbClient?.lastVisit ? dbClient.lastVisit.toISOString() : null,
       channel: "WHATSAPP",
       avatarUrl,
+      instagramUsername: dbClient?.instagramUsername || null,
       source: dbLead?.source || "WHATSAPP",
       note: dbClient?.note || dbLead?.note || null,
       visitedCount,

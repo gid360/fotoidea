@@ -79,7 +79,7 @@ export function CertificatesClient() {
     validDays: "90",
     peopleCount: "1",
     pricePaid: "",
-    paymentMethod: "CASH" as "CASH" | "CARD",
+    paymentMethod: "KASPI" as string,
   });
 
   const [categoryFilter, setCategoryFilter] = useState("");
@@ -413,7 +413,7 @@ export function CertificatesClient() {
             {form.type === "NOMINAL" ? (
               <div>
                 <Label>Сумма номинала (₸)</Label>
-                <Input className="mt-1" type="number" min="1" step="1000" placeholder="5000"
+                <Input className="mt-1" type="number" min="0.01" step="any" placeholder="5000"
                   value={form.nominalAmount}
                   onChange={e => setForm(f => ({ ...f, nominalAmount: e.target.value }))} />
               </div>
@@ -557,7 +557,7 @@ export function CertificatesClient() {
 
             <div>
               <Label>Сумма продажи (₸) - для записи в кассу</Label>
-              <Input className="mt-1" type="number" min="0" step="500" placeholder="0 - не записывать"
+              <Input className="mt-1" type="number" min="0" step="any" placeholder="0 - не записывать"
                 value={form.pricePaid}
                 onChange={e => setForm(f => ({ ...f, pricePaid: e.target.value }))} />
             </div>
@@ -565,15 +565,20 @@ export function CertificatesClient() {
             {form.pricePaid && Number(form.pricePaid) > 0 && (
               <div>
                 <Label>Способ оплаты</Label>
-                <div className="mt-1 grid grid-cols-2 gap-2">
-                  {(["CASH", "CARD"] as const).map(m => (
-                    <button key={m} type="button"
-                      onClick={() => setForm(f => ({ ...f, paymentMethod: m }))}
+                <div className="mt-1 grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                  {[
+                    { id: "KASPI", label: "Kaspi" },
+                    { id: "HALYK", label: "Halyk" },
+                    { id: "CASH",  label: "Наличные" },
+                    { id: "MIXED", label: "Смешанная" },
+                  ].map(m => (
+                    <button key={m.id} type="button"
+                      onClick={() => setForm(f => ({ ...f, paymentMethod: m.id }))}
                       className={cn(
-                        "border rounded-lg px-3 py-2 text-sm transition-colors",
-                        form.paymentMethod === m ? "border-primary bg-primary/5 font-medium" : "hover:bg-muted/50"
+                        "border rounded-lg px-2.5 py-1.5 text-xs transition-colors font-medium text-center",
+                        form.paymentMethod === m.id ? "border-primary bg-primary text-primary-foreground font-semibold shadow-2xs" : "hover:bg-muted/50 border-slate-200 dark:border-slate-800"
                       )}>
-                      {m === "CASH" ? "Наличные" : "Карта / QR"}
+                      {m.label}
                     </button>
                   ))}
                 </div>

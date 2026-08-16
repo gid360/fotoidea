@@ -11,6 +11,7 @@ import { LoyaltyTag } from "@prisma/client";
 import { CreateClientDialog } from "./CreateClientDialog";
 import { AltegioImportDialog } from "@/components/AltegioImportDialog";
 import { LOYALTY_CONFIG } from "@/lib/loyalty";
+import { formatPhonePretty } from "@/app/conversations/types";
 
 interface Client {
   id: string;
@@ -244,7 +245,7 @@ export function ClientsClient() {
                       <div className="flex items-center gap-2">
                         <p className="font-medium text-sm truncate">{client.lastName} {client.firstName}</p>
                       </div>
-                      <p className="text-xs text-muted-foreground">{client.phone}</p>
+                      <p className="text-xs text-muted-foreground font-mono">{formatPhonePretty(client.phone)}</p>
                       <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5">
                         Продано: {formatMoney(client.totalSales || 0)} ₸
                       </p>
@@ -297,7 +298,7 @@ export function ClientsClient() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">{client.phone}</td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground font-mono">{formatPhonePretty(client.phone)}</td>
                       <td className="px-4 py-3">
                         <span className={cn("inline-flex px-2 py-0.5 rounded-full text-xs font-medium", tag?.className)}>
                           {tag?.label || client.loyaltyTag}

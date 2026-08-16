@@ -51,7 +51,10 @@ const INCOME_CATS  = ["SUBSCRIPTION_SALE", "CERTIFICATE_SALE", "DEPOSIT_TOPUP", 
 const EXPENSE_CATS = ["TRAINER_SALARY", "HOUSEHOLD", "CLIENT_REFUND", "OTHER_EXPENSE"];
 
 const PAYMENT_LABELS: Record<string, string> = {
+  KASPI:   "Kaspi",
+  HALYK:   "Halyk",
   CASH:    "Наличные",
+  MIXED:   "Смешанная",
   CARD:    "Карта / QR",
   DEPOSIT: "Депозит",
 };
@@ -63,7 +66,7 @@ export function ShiftDetail({ shift, onBack }: { shift: Shift; onBack: () => voi
   const [form, setForm] = useState({
     type:          "INCOME" as "INCOME" | "EXPENSE",
     category:      "OTHER_INCOME",
-    paymentMethod: "CASH" as "CASH" | "CARD" | "DEPOSIT",
+    paymentMethod: "KASPI" as string,
     amount:        "",
     description:   "",
   });
@@ -227,15 +230,18 @@ export function ShiftDetail({ shift, onBack }: { shift: Shift; onBack: () => voi
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Сумма (₸)</Label>
-                <Input className="mt-1" type="number" min="1" step="100"
+                <Input className="mt-1" type="number" min="0.01" step="any"
                   value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
               </div>
               <div>
                 <Label>Способ оплаты</Label>
-                <Select value={form.paymentMethod} onValueChange={v => setForm(f => ({ ...f, paymentMethod: v as typeof form.paymentMethod }))}>
+                <Select value={form.paymentMethod} onValueChange={v => setForm(f => ({ ...f, paymentMethod: v }))}>
                   <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="KASPI">Kaspi</SelectItem>
+                    <SelectItem value="HALYK">Halyk</SelectItem>
                     <SelectItem value="CASH">Наличные</SelectItem>
+                    <SelectItem value="MIXED">Смешанная</SelectItem>
                     <SelectItem value="CARD">Карта / QR</SelectItem>
                     <SelectItem value="DEPOSIT">Депозит</SelectItem>
                   </SelectContent>

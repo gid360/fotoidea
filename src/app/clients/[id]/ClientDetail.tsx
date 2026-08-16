@@ -21,6 +21,7 @@ import { cn, formatMoney, formatDate, formatDateTime } from "@/lib/utils";
 import { toast } from "@/lib/use-toast";
 import { LoyaltyTag, BookingStatus } from "@prisma/client";
 import { LOYALTY_CONFIG } from "@/lib/loyalty";
+import { formatPhonePretty } from "@/app/conversations/types";
 
 const FUNNEL_STAGE_CONFIG: Record<string, { label: string; className: string }> = {
   NEW:          { label: "Новый",           className: "bg-slate-100 text-slate-800 dark:bg-slate-900/60 dark:text-slate-300 border border-slate-200 dark:border-slate-800" },
@@ -371,22 +372,46 @@ export function ClientDetail({ clientId }: { clientId: string }) {
                       <span className="pointer-events-none absolute right-2 text-current text-[9px]">▼</span>
                     </div>
 
-                    {/* Инстаграм кнопка Объединить */}
+                    {/* Инстаграм кнопка Связать / Переход */}
                     {client.instagramUsername ? (
-                      <span className="flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-full font-semibold text-pink-700 bg-pink-100 dark:bg-pink-950/60 dark:text-pink-300 border border-pink-200">
-                        <Instagram className="h-3.5 w-3.5" />
-                        @{client.instagramUsername}
-                      </span>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const handle = client.instagramUsername?.trim().replace(/^@/, "");
+                            if (handle) window.open(`https://instagram.com/${handle}`, "_blank");
+                          }}
+                          className="flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-full font-semibold text-pink-700 bg-pink-100 dark:bg-pink-950/60 dark:text-pink-300 border border-pink-200 hover:bg-pink-200/80 transition-colors cursor-pointer"
+                          title="Открыть профиль Instagram"
+                        >
+                          <Instagram className="h-3.5 w-3.5" />
+                          @{client.instagramUsername.replace(/^@/, "")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setInstaInput(client.instagramUsername || "");
+                            setInstaModalOpen(true);
+                          }}
+                          className="p-1 rounded text-slate-400 hover:text-slate-600 transition-colors"
+                          title="Изменить Instagram"
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </button>
+                      </div>
                     ) : (
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setInstaModalOpen(true)}
-                        className="h-6 text-xs gap-1 border-pink-300 text-pink-700 hover:bg-pink-50"
+                        onClick={() => {
+                          setInstaInput("");
+                          setInstaModalOpen(true);
+                        }}
+                        className="h-6 text-xs gap-1 border-pink-300 text-pink-700 hover:bg-pink-50 font-medium"
                       >
                         <Instagram className="h-3 w-3" />
                         <Link2 className="h-3 w-3" />
-                        Объединить с Instagram
+                        Связать с Instagram
                       </Button>
                     )}
 
@@ -399,8 +424,8 @@ export function ClientDetail({ clientId }: { clientId: string }) {
                       Визитов: {visitedCount}
                     </span>
                     {client.phone && (
-                      <span className="flex items-center gap-1 text-sm text-muted-foreground">
-                        <Phone className="h-3.5 w-3.5" />{client.phone}
+                      <span className="flex items-center gap-1 text-sm text-muted-foreground font-mono">
+                        <Phone className="h-3.5 w-3.5" />{formatPhonePretty(client.phone)}
                       </span>
                     )}
                     {client.email && (
@@ -498,14 +523,14 @@ export function ClientDetail({ clientId }: { clientId: string }) {
           <div className="bg-background border rounded-xl p-5 max-w-sm w-full space-y-4 shadow-xl">
             <div className="flex items-center justify-between border-b pb-2">
               <h3 className="font-bold text-sm flex items-center gap-2 text-pink-600">
-                <Instagram className="h-4 w-4" /> Объединить с Instagram
+                <Instagram className="h-4 w-4" /> Связать с Instagram
               </h3>
               <button onClick={() => setInstaModalOpen(false)} className="text-muted-foreground hover:text-foreground">
                 <X className="h-4 w-4" />
               </button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Укажите имя пользователя Instagram (handle) клиента для связывания диалогов из Instagram Direct с этим профилем:
+              Укажите имя пользователя Instagram (handle) клиента для связывания профиля:
             </p>
             <div>
               <Label className="text-xs">Instagram Username</Label>

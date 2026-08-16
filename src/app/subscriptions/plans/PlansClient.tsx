@@ -609,7 +609,7 @@ export function PlansClient() {
                     className="mt-1 font-semibold"
                     type="number"
                     min="0"
-                    step="500"
+                    step="any"
                     placeholder="15000"
                     value={form.price}
                     onChange={e => setForm(f => ({ ...f, price: Number(e.target.value) }))}
@@ -623,7 +623,7 @@ export function PlansClient() {
                       className="mt-1 font-semibold"
                       type="number"
                       min="0"
-                      step="500"
+                      step="any"
                       placeholder="30000"
                       value={form.priceTo}
                       onChange={e => setForm(f => ({ ...f, priceTo: Number(e.target.value) }))}
@@ -683,7 +683,7 @@ export function PlansClient() {
                       <span className="text-muted-foreground font-medium shrink-0">чел.:</span>
                       <Input
                         type="number"
-                        step="500"
+                        step="any"
                         className="flex-1 h-7 text-xs font-bold p-1"
                         placeholder="Цена за чел."
                         value={tier.pricePerPerson}

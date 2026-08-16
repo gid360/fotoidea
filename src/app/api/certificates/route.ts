@@ -25,7 +25,7 @@ const createSchema = z.object({
   validDays:     z.preprocess(v => (v === "" || v === null || v === undefined ? 90 : Number(v)), z.number().int().positive().optional().default(90)),
   peopleCount:   z.preprocess(v => (v === "" || v === null || v === undefined || Number(v) <= 0 ? undefined : Number(v)), z.number().int().positive().optional().nullable()),
   pricePaid:     z.preprocess(v => (v === "" || v === null || v === undefined ? undefined : Number(v)), z.number().nonnegative().optional().nullable()),
-  paymentMethod: z.enum(["CASH", "CARD"]).optional().nullable(),
+  paymentMethod: z.enum(["KASPI", "HALYK", "CASH", "MIXED", "CARD"]).optional().nullable(),
 });
 
 export async function GET(req: NextRequest) {

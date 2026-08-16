@@ -231,7 +231,7 @@ export function ShiftsClient() {
           <DialogHeader><DialogTitle>Открыть кассовую смену</DialogTitle></DialogHeader>
           <div>
             <Label>Фактический остаток в кассе (₸)</Label>
-            <Input className="mt-1" type="number" min="0" step="100"
+            <Input className="mt-1" type="number" min="0" step="any"
               value={openBalance} onChange={e => setOpenBalance(e.target.value)} />
             <p className="text-xs text-muted-foreground mt-1">Пересчитайте наличные и введите сумму</p>
           </div>

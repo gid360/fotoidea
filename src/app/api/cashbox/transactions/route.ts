@@ -11,7 +11,7 @@ const txSchema = z.object({
     "SUBSCRIPTION_SALE", "CERTIFICATE_SALE", "DEPOSIT_TOPUP", "OTHER_INCOME",
     "TRAINER_SALARY", "HOUSEHOLD", "CLIENT_REFUND", "OTHER_EXPENSE",
   ]),
-  paymentMethod: z.enum(["CASH", "CARD", "DEPOSIT"]).default("CASH"),
+  paymentMethod: z.enum(["KASPI", "HALYK", "CASH", "MIXED", "CARD", "DEPOSIT"]).default("CASH"),
   amount:        z.number().positive(),
   description:   z.string().optional(),
   clientId:      z.string().optional(),

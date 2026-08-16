@@ -300,7 +300,7 @@ export function ClassDetailDialog({ eventId, onClose, onUpdated }: Props) {
                   <Input
                     type="number"
                     min="0"
-                    step="500"
+                    step="any"
                     className="h-6 w-24 text-xs font-semibold bg-background"
                     value={newPrepayment}
                     onChange={e => setNewPrepayment(e.target.value)}

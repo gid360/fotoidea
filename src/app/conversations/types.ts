@@ -29,6 +29,7 @@ export interface ClientDto {
   lastVisitAt: string | null;
   channel: "WHATSAPP" | "INSTAGRAM" | "WIDGET" | "";
   avatarUrl: string | null;
+  instagramUsername?: string | null;
   source: string;
   note: string | null;
   visitedCount?: number;
@@ -102,14 +103,19 @@ export const SEGMENT_COLOR: Record<string, string> = {
 export function formatPhonePretty(phone: string | null | undefined): string {
   if (!phone) return "";
   const cleaned = phone.replace(/\D/g, "");
+  if (!cleaned) return phone.replace(/[()\-]/g, " ").replace(/\s+/g, " ").trim();
   if (cleaned.length > 12) return "";
-  if (cleaned.length === 11 && (cleaned.startsWith("7") || cleaned.startsWith("8"))) {
-    return `+7 (${cleaned.slice(1, 4)}) ${cleaned.slice(4, 7)}-${cleaned.slice(7, 9)}-${cleaned.slice(9, 11)}`;
+  if (cleaned.length === 11) {
+    const first = cleaned.startsWith("7") || cleaned.startsWith("8") ? (cleaned.startsWith("7") ? "+7" : "8") : cleaned[0];
+    return `${first} ${cleaned.slice(1, 4)} ${cleaned.slice(4, 7)} ${cleaned.slice(7, 9)} ${cleaned.slice(9, 11)}`;
   }
   if (cleaned.length === 10) {
-    return `+7 (${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6, 8)}-${cleaned.slice(8, 10)}`;
+    return `8 ${cleaned.slice(0, 3)} ${cleaned.slice(3, 6)} ${cleaned.slice(6, 8)} ${cleaned.slice(8, 10)}`;
   }
-  return phone.startsWith("+") ? phone : `+${phone}`;
+  if (cleaned.length === 12 && cleaned.startsWith("7")) {
+    return `+7 ${cleaned.slice(2, 5)} ${cleaned.slice(5, 8)} ${cleaned.slice(8, 10)} ${cleaned.slice(10, 12)}`;
+  }
+  return phone.replace(/[()\-]/g, " ").replace(/\s+/g, " ").trim();
 }
 
 export function clientDisplayName(client: Pick<ClientDto, "name" | "phone">): string {

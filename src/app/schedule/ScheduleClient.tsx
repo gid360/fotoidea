@@ -22,6 +22,26 @@ function minutesFromDayStart(date: Date) {
   return (date.getHours() - HOUR_START) * 60 + date.getMinutes();
 }
 
+function getContrastTextColor(hexColor?: string): string {
+  if (!hexColor) return "#ffffff";
+  const hex = hexColor.replace("#", "");
+  if (hex.length === 3) {
+    const r = parseInt(hex[0] + hex[0], 16);
+    const g = parseInt(hex[1] + hex[1], 16);
+    const b = parseInt(hex[2] + hex[2], 16);
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance > 0.65 ? "#0f172a" : "#ffffff";
+  }
+  if (hex.length === 6) {
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance > 0.65 ? "#0f172a" : "#ffffff";
+  }
+  return "#ffffff";
+}
+
 // ─── Типы ────────────────────────────────────────────────────
 interface Hall { id: string; name: string; colorHex: string }
 interface ClassEvent {
@@ -335,7 +355,7 @@ export function ScheduleClient({ initialHalls }: { initialHalls: Hall[] }) {
   return (
     <div className="flex flex-col h-full">
       {/* ─ Шапка ─────────────────────────────────────────── */}
-      <div className="p-2 sm:p-4 border-b bg-background shrink-0 space-y-1.5 sm:space-y-3">
+      <div className="p-2 sm:px-4 sm:py-2 border-b bg-background shrink-0 space-y-1.5 sm:space-y-2">
         {/* Строка навигации */}
         <div className="flex items-center justify-between gap-1.5">
           <div className="flex items-center gap-1 sm:gap-2 min-w-0">
@@ -401,14 +421,14 @@ export function ScheduleClient({ initialHalls }: { initialHalls: Hall[] }) {
                 key={day.toISOString()}
                 onClick={() => setSelectedDate(day)}
                 className={cn(
-                  "flex-1 flex flex-col items-center py-1 rounded-lg text-xs transition-colors",
-                  isSelected ? "bg-primary text-primary-foreground shadow-2xs" : "hover:bg-muted bg-slate-50/70 dark:bg-slate-800/40"
+                  "flex-1 flex flex-row sm:flex-col items-center justify-center gap-1 sm:gap-0.5 py-0.5 sm:py-1 px-1 rounded-md text-xs transition-colors h-7 sm:h-9",
+                  isSelected ? "bg-primary text-primary-foreground shadow-2xs font-semibold" : "hover:bg-muted bg-slate-50/70 dark:bg-slate-800/40"
                 )}
               >
-                <span className="capitalize text-[10px] sm:text-xs font-medium">{format(day, "EEE", { locale: ru })}</span>
-                <span className="font-bold text-xs sm:text-sm">{format(day, "d")}</span>
+                <span className="capitalize text-[10px] sm:text-[11px] font-medium leading-none">{format(day, "EEE", { locale: ru })}</span>
+                <span className="font-bold text-[11px] sm:text-xs leading-none">{format(day, "d")}</span>
                 {dayEvents.length > 0 && (
-                  <span className={cn("w-1 h-1 rounded-full mt-0.5", isSelected ? "bg-white" : "bg-primary")} />
+                  <span className={cn("w-1 h-1 rounded-full shrink-0", isSelected ? "bg-white" : "bg-primary")} />
                 )}
               </button>
             );
@@ -475,10 +495,15 @@ export function ScheduleClient({ initialHalls }: { initialHalls: Hall[] }) {
               >
                 {/* Заголовок зала */}
                 <div
-                  className="h-10 flex items-center justify-center text-xs font-semibold border-b sticky top-0 bg-background z-10 px-2 text-center"
-                  style={{ borderBottomColor: hall.colorHex, borderBottomWidth: 2 }}
+                  className="h-10 flex items-center justify-center text-xs font-bold border-b sticky top-0 z-10 px-2 text-center shadow-xs transition-colors select-none"
+                  style={{
+                    backgroundColor: hall.colorHex || "#64748b",
+                    color: getContrastTextColor(hall.colorHex),
+                    borderBottomColor: "rgba(0, 0, 0, 0.15)",
+                    borderBottomWidth: 1,
+                  }}
                 >
-                  {hall.name}
+                  <span className="truncate">{hall.name}</span>
                 </div>
 
                 {/* Тело колонки */}

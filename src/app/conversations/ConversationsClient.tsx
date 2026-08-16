@@ -3,7 +3,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Search, RefreshCw, Pin, MessageCircle, Filter, Plus, UserPlus, CheckCheck,
+  Search, RefreshCw, Pin, MessageCircle, Filter, Plus, UserPlus, CheckCheck, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,7 @@ import type {
   ConversationDetailDto,
   FunnelStageDto,
 } from "./types";
-import { SEGMENT_COLOR, clientDisplayName, formatPhonePretty } from "./types";
+import { SEGMENT_COLOR, SEGMENT_LABEL, clientDisplayName, formatPhonePretty } from "./types";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 
@@ -310,8 +310,18 @@ export function ConversationsClient() {
               placeholder="Поиск по клиенту или номеру…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 h-8 text-xs"
+              className="pl-8 pr-8 h-8 text-xs"
             />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-2.5 top-2 text-muted-foreground hover:text-foreground transition-colors p-0.5"
+                title="Очистить"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
 
           {/* Channel Filters */}
@@ -430,14 +440,15 @@ export function ConversationsClient() {
                         </span>
 
                         <div className="flex items-center gap-1">
-                          {c.funnelStage && (
-                            <span
-                              className="text-[9px] px-1.5 py-0.2 rounded-full font-medium"
-                              style={{ backgroundColor: c.funnelStage.color + "20", color: c.funnelStage.color }}
-                            >
-                              {c.funnelStage.name}
-                            </span>
-                          )}
+                          <span
+                            className="text-[9px] px-1.5 py-0.2 rounded-full font-medium"
+                            style={{
+                              backgroundColor: (SEGMENT_COLOR[c.client.segment] || "#2563eb") + "20",
+                              color: SEGMENT_COLOR[c.client.segment] || "#2563eb",
+                            }}
+                          >
+                            {SEGMENT_LABEL[c.client.segment] || "Новый"}
+                          </span>
 
                           <button
                             onClick={(e) => togglePin(c.id, e)}
@@ -510,7 +521,6 @@ export function ConversationsClient() {
         >
           <ClientPanel
             conversation={detail}
-            funnelStages={funnelStages}
             onChanged={handleRefreshAll}
             onBack={() => setMobileView("chat")}
             onClose={() => {

@@ -4,34 +4,27 @@ import { useState } from "react";
 import {
   User, Phone, Mail, Calendar, MessageCircle, Tag, Plus, Edit2, Check, X,
   Clock, Shield, Award, Camera, RefreshCw, AlertCircle, ShoppingBag, FileText, ChevronRight, CheckCircle2, ChevronDown, Trash2, ArrowLeft, ExternalLink,
+  Instagram, Link2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { cn, formatDateTime } from "@/lib/utils";
 import { Avatar } from "./Avatar";
 import { AvatarLightbox } from "./AvatarLightbox";
 import { ChannelBadge } from "./ChannelBadge";
-import type { ConversationDetailDto, FunnelStageDto } from "./types";
+import type { ConversationDetailDto } from "./types";
 import { SEGMENT_LABEL, SEGMENT_COLOR, clientDisplayName, formatPhonePretty } from "./types";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-
-const DEFAULT_FUNNEL_STAGES: FunnelStageDto[] = [
-  { id: "NEW",          name: "Новый",           order: 1, color: "#6b7280" },
-  { id: "CONVERSATION", name: "Переписка",      order: 2, color: "#3b82f6" },
-  { id: "BOUGHT",       name: "Купил",           order: 3, color: "#144d37" },
-  { id: "VISITED",      name: "Посетил",         order: 4, color: "#0d9488" },
-  { id: "REPEAT_BUYER", name: "Повторно купил", order: 5, color: "#8b5cf6" },
-];
 
 interface ClientPanelProps {
   conversation: ConversationDetailDto;
   onClose?: () => void;
   onBack?: () => void;
   onChanged: () => void;
-  funnelStages?: FunnelStageDto[];
 }
 
 export function ClientPanel({
@@ -39,7 +32,6 @@ export function ClientPanel({
   onClose,
   onBack,
   onChanged,
-  funnelStages = [],
 }: ClientPanelProps) {
   const client = conversation.client;
   const [noteText, setNoteText] = useState("");
@@ -47,19 +39,13 @@ export function ClientPanel({
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(client.name || "");
   const [savingName, setSavingName] = useState(false);
-  const [updatingStage, setUpdatingStage] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [isStageDropdownOpen, setIsStageDropdownOpen] = useState(false);
 
-  const [currentStageId, setCurrentStageId] = useState(conversation.funnelStageId || "NEW");
+  // Instagram linking state
+  const [instaModalOpen, setInstaModalOpen] = useState(false);
+  const [instaInput, setInstaInput] = useState(client.instagramUsername || "");
+  const [savingInsta, setSavingInsta] = useState(false);
 
-  // Keep internal stage in sync with conversation updates
-  if (conversation.funnelStageId && conversation.funnelStageId !== currentStageId && !updatingStage) {
-    setCurrentStageId(conversation.funnelStageId);
-  }
-
-  const stagesList = funnelStages.length > 0 ? funnelStages : DEFAULT_FUNNEL_STAGES;
-  const activeStageObj = stagesList.find((s) => s.id === currentStageId);
   const visitedCount = client.visitedCount ?? 0;
   const upcomingBookings = client.upcomingBookings ?? [];
 
@@ -81,21 +67,37 @@ export function ClientPanel({
     }
   }
 
-  async function handleStageChange(stageId: string) {
-    setCurrentStageId(stageId);
-    setUpdatingStage(true);
+  async function handleLinkInstagram() {
+    const handle = instaInput.trim().replace(/^@/, "");
+    setSavingInsta(true);
     try {
-      await fetch(`/api/conversations/${conversation.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ funnelStageId: stageId, phone: client.phone }),
-      });
+      if (client.dbClientId || (client.id && !client.id.includes("@"))) {
+        await fetch(`/api/clients/${client.dbClientId || client.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ instagramUsername: handle || null }),
+        });
+      } else {
+        await fetch(`/api/conversations/${conversation.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ instagramUsername: handle || null, phone: client.phone }),
+        });
+      }
+      setInstaModalOpen(false);
       if (onChanged) onChanged();
     } catch (e) {
       console.error(e);
     } finally {
-      setUpdatingStage(false);
+      setSavingInsta(false);
     }
+  }
+
+  function handleInstagramClick() {
+    const handle = client.instagramUsername?.trim().replace(/^@/, "");
+    if (!handle) return;
+    // Check if there is an Instagram dialogue in current window / cache or open profile
+    window.open(`https://instagram.com/${handle}`, "_blank");
   }
 
   async function handleAddNote() {
@@ -125,16 +127,6 @@ export function ClientPanel({
       if (res.ok && onChanged) onChanged();
     } catch (e) {
       console.error("Error deleting note:", e);
-    }
-  }
-
-  async function handleDeleteBooking(bookingId: string) {
-    if (!confirm("Удалить эту запись целиком?")) return;
-    try {
-      const res = await fetch(`/api/bookings/${bookingId}`, { method: "DELETE" });
-      if (res.ok && onChanged) onChanged();
-    } catch (e) {
-      console.error("Error deleting booking:", e);
     }
   }
 
@@ -271,98 +263,95 @@ export function ClientPanel({
           </div>
         </div>
 
-        {/* Funnel Stage Custom Colored Dropdown */}
-        <div className="space-y-1.5 relative">
+        {/* Instagram Account Section */}
+        <div className="space-y-1.5 pt-1">
           <label className="font-semibold text-slate-700 flex items-center justify-between">
             <span className="flex items-center gap-1.5">
-              <ShoppingBag className="h-3.5 w-3.5 text-slate-500" />
-              Этап воронки
+              <Instagram className="h-3.5 w-3.5 text-pink-600" />
+              Instagram
             </span>
-            {activeStageObj && (
-              <span className="text-[10px] text-slate-400 font-normal">
-                {activeStageObj.name}
-              </span>
-            )}
           </label>
-
-          {/* Trigger button (Active stage colored row) */}
-          {activeStageObj && (
-            <button
-              onClick={() => setIsStageDropdownOpen((prev) => !prev)}
-              disabled={updatingStage}
-              className="w-full text-left px-3 py-2 rounded-lg border text-xs font-semibold transition-all flex items-center justify-between shadow-2xs cursor-pointer hover:opacity-95"
-              style={{
-                backgroundColor: activeStageObj.color + "18",
-                borderColor: activeStageObj.color + "60",
-                color: activeStageObj.color,
+          {client.instagramUsername ? (
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={handleInstagramClick}
+                className="flex-1 flex items-center justify-between px-2.5 py-1.5 rounded-lg border border-pink-200 bg-pink-50/80 hover:bg-pink-100/90 text-pink-700 font-semibold text-xs transition-colors group cursor-pointer"
+                title="Открыть профиль Instagram"
+              >
+                <span className="flex items-center gap-1.5 truncate">
+                  <Instagram className="h-3.5 w-3.5 text-pink-600 shrink-0" />
+                  @{client.instagramUsername.replace(/^@/, "")}
+                </span>
+                <ExternalLink className="h-3 w-3 text-pink-500 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 text-slate-500 hover:text-slate-700 shrink-0"
+                onClick={() => {
+                  setInstaInput(client.instagramUsername || "");
+                  setInstaModalOpen(true);
+                }}
+                title="Изменить Instagram"
+              >
+                <Edit2 className="h-3 w-3" />
+              </Button>
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setInstaInput("");
+                setInstaModalOpen(true);
               }}
+              className="w-full h-8 text-xs gap-1.5 border-pink-200 text-pink-700 hover:bg-pink-50 hover:border-pink-300 font-medium"
             >
-              <div className="flex items-center gap-2">
-                <span
-                  className="h-2.5 w-2.5 rounded-full shrink-0 shadow-2xs"
-                  style={{ backgroundColor: activeStageObj.color }}
-                />
-                <span className="font-medium text-slate-900 dark:text-slate-100">{activeStageObj.name}</span>
-              </div>
-              <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-200", isStageDropdownOpen && "rotate-180")} />
-            </button>
-          )}
-
-          {/* Dropdown Menu of Colored Stage Rows */}
-          {isStageDropdownOpen && (
-            <>
-              {/* Backdrop */}
-              <div
-                className="fixed inset-0 z-10"
-                onClick={() => setIsStageDropdownOpen(false)}
-              />
-
-              <div className="absolute left-0 right-0 top-full mt-1 z-20 bg-background border border-slate-200 dark:border-slate-800 rounded-lg p-1.5 shadow-lg space-y-1 animate-in fade-in-50 zoom-in-95">
-                {stagesList.map((stage) => {
-                  const isActive = currentStageId === stage.id;
-                  return (
-                    <button
-                      key={stage.id}
-                      onClick={() => {
-                        handleStageChange(stage.id);
-                        setIsStageDropdownOpen(false);
-                      }}
-                      disabled={updatingStage}
-                      className={cn(
-                        "w-full text-left px-3 py-2 rounded-md border text-xs font-semibold transition-all flex items-center justify-between cursor-pointer",
-                        isActive
-                          ? "ring-1 font-bold shadow-2xs"
-                          : "hover:opacity-90 opacity-85"
-                      )}
-                      style={{
-                        backgroundColor: stage.color + (isActive ? "22" : "08"),
-                        borderColor: stage.color + (isActive ? "80" : "25"),
-                        color: stage.color,
-                        outlineColor: stage.color,
-                      }}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="h-2.5 w-2.5 rounded-full shrink-0 shadow-2xs"
-                          style={{ backgroundColor: stage.color }}
-                        />
-                        <span className="font-medium text-slate-900 dark:text-slate-100">{stage.name}</span>
-                      </div>
-                      {isActive && (
-                        <span
-                          className="text-[10px] px-1.5 py-0.5 rounded text-white font-bold flex items-center gap-0.5 shadow-2xs"
-                          style={{ backgroundColor: stage.color }}
-                        >
-                          <Check className="h-3 w-3" />
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </>
+              <Instagram className="h-3.5 w-3.5 text-pink-600" />
+              <Link2 className="h-3 w-3" />
+              Связать с Instagram
+            </Button>
           )}
         </div>
+
+        {/* Modal: Link with Instagram */}
+        {instaModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div className="bg-background border rounded-xl p-5 max-w-sm w-full space-y-4 shadow-xl animate-in fade-in-50 zoom-in-95">
+              <div className="flex items-center justify-between border-b pb-2">
+                <h3 className="font-bold text-sm flex items-center gap-2 text-pink-600">
+                  <Instagram className="h-4 w-4" /> Связать с Instagram
+                </h3>
+                <button onClick={() => setInstaModalOpen(false)} className="text-muted-foreground hover:text-foreground">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Укажите имя пользователя Instagram (handle) клиента для связывания профиля:
+              </p>
+              <div>
+                <Label className="text-xs">Instagram Username</Label>
+                <div className="relative mt-1">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs font-semibold">@</span>
+                  <Input
+                    value={instaInput}
+                    onChange={(e) => setInstaInput(e.target.value)}
+                    placeholder="username"
+                    className="pl-7 text-xs"
+                    autoFocus
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" size="sm" onClick={() => setInstaModalOpen(false)}>Отмена</Button>
+                <Button size="sm" onClick={handleLinkInstagram} disabled={savingInsta} className="bg-pink-600 hover:bg-pink-700 text-white">
+                  {savingInsta ? "Сохраняем..." : "Связать"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Upcoming Bookings */}
         <div className="space-y-1.5 pt-2 border-t">

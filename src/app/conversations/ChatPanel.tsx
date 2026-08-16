@@ -141,6 +141,7 @@ function AudioMessagePlayer({ src, isOutgoing }: { src: string; isOutgoing: bool
   };
 
   const formatTime = (secs: number) => {
+    if (typeof secs !== "number" || isNaN(secs) || !isFinite(secs) || secs < 0) return "0:00";
     const m = Math.floor(secs / 60);
     const s = Math.floor(secs % 60);
     return `${m}:${s < 10 ? "0" : ""}${s}`;
@@ -151,6 +152,8 @@ function AudioMessagePlayer({ src, isOutgoing }: { src: string; isOutgoing: bool
       audioRef.current.playbackRate = speed;
     }
   };
+
+  const validDuration = typeof duration === "number" && isFinite(duration) && duration > 0 ? duration : 0;
 
   return (
     <div className={cn("flex items-center gap-3 p-2 rounded-xl border my-1 min-w-[200px]", isOutgoing ? "bg-[#103e2c] border-white/20 text-white" : "bg-slate-100 border-slate-200 text-slate-800")}>
@@ -164,12 +167,12 @@ function AudioMessagePlayer({ src, isOutgoing }: { src: string; isOutgoing: bool
       <div className="flex-1 min-w-0 flex flex-col gap-1">
         <div className="flex items-center justify-between text-[11px] opacity-80 font-mono">
           <span>{formatTime(currentTime)}</span>
-          <span>{duration > 0 ? formatTime(duration) : "🎤 Голосовое"}</span>
+          <span>{validDuration > 0 ? formatTime(validDuration) : (playing ? formatTime(currentTime) : "🎤 Голосовое")}</span>
         </div>
         <div className="h-1.5 w-full bg-black/10 rounded-full overflow-hidden">
           <div
             className="h-full bg-current transition-all duration-100"
-            style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
+            style={{ width: `${validDuration > 0 ? Math.min(100, Math.max(0, (currentTime / validDuration) * 100)) : 0}%` }}
           />
         </div>
       </div>
@@ -195,11 +198,25 @@ function AudioMessagePlayer({ src, isOutgoing }: { src: string; isOutgoing: bool
         }}
         onPause={() => setPlaying(false)}
         onEnded={() => { setPlaying(false); setCurrentTime(0); }}
-        onTimeUpdate={() => audioRef.current && setCurrentTime(audioRef.current.currentTime)}
+        onTimeUpdate={() => {
+          if (audioRef.current) {
+            const ct = audioRef.current.currentTime;
+            if (isFinite(ct)) setCurrentTime(ct);
+            const dur = audioRef.current.duration;
+            if (isFinite(dur) && dur > 0 && dur !== duration) setDuration(dur);
+          }
+        }}
         onLoadedMetadata={() => {
           if (audioRef.current) {
-            setDuration(audioRef.current.duration);
+            const dur = audioRef.current.duration;
+            if (isFinite(dur) && dur > 0) setDuration(dur);
             audioRef.current.playbackRate = speed;
+          }
+        }}
+        onDurationChange={() => {
+          if (audioRef.current) {
+            const dur = audioRef.current.duration;
+            if (isFinite(dur) && dur > 0) setDuration(dur);
           }
         }}
       />
@@ -688,17 +705,32 @@ export function ChatPanel({
 
         <div className="flex items-center gap-1.5 shrink-0">
           {showSearch ? (
-            <div className="flex items-center gap-1 bg-slate-100 rounded-lg px-2 py-1">
-              <Search className="h-3.5 w-3.5 text-slate-400" />
+            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg px-2 py-1 border border-slate-200 dark:border-slate-700">
+              <Search className="h-3.5 w-3.5 text-slate-400 shrink-0" />
               <input
                 type="text"
                 placeholder="Поиск по переписке…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="bg-transparent text-xs outline-none w-36"
+                className="bg-transparent text-xs outline-none w-36 sm:w-48 text-slate-800 dark:text-slate-100"
                 autoFocus
               />
-              <button onClick={() => { setShowSearch(false); setSearchQuery(""); }} className="p-0.5 text-slate-400 hover:text-slate-600">
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="p-0.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                  title="Очистить"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => { setShowSearch(false); setSearchQuery(""); }}
+                className="p-0.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors border-l pl-1 ml-0.5"
+                title="Закрыть поиск"
+              >
                 <X className="h-3.5 w-3.5" />
               </button>
             </div>

@@ -76,10 +76,12 @@ enum CashTransactionCategory {
 }
 
 enum PaymentMethod {
+  KASPI    // Kaspi
+  HALYK    // Halyk
   CASH     // Наличные
+  MIXED    // Смешанная
   CARD     // Карта/QR
   DEPOSIT  // Списание с депозита клиента
-  MIXED    // Депозит + наличные/карта
 }
 
 enum LeadStatus {
@@ -124,6 +126,9 @@ model User {
   auditLogs     AuditLog[]
   cashShifts    CashShift[]
   cashTransactions CashTransaction[]
+  tasksCreated  Task[] @relation("TasksCreated")
+  tasksAssigned Task[] @relation("TasksAssigned")
+  taskComments  TaskComment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -224,6 +229,7 @@ model Client {
   auditLogs     AuditLog[]
   documents     ClientDocument[]
   leads         Lead[]
+  tasks         Task[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -595,3 +601,73 @@ model Setting {
 
   @@map("settings")
 }
+
+// ─── ЗАДАЧИ ──────────────────────────────────────────────────
+
+enum TaskStatus {
+  PENDING
+  DONE
+  OVERDUE
+  ARCHIVED
+}
+
+model Task {
+  id            String       @id @default(cuid())
+  title         String
+  description   String?      @db.Text
+  dueAt         DateTime?
+  status        TaskStatus   @default(PENDING)
+  category      String       @default("general")
+  attachments   Json?        // [{ name: string, url: string }]
+
+  createdById   String
+  createdBy     User         @relation("TasksCreated", fields: [createdById], references: [id], onDelete: Cascade)
+
+  assignedTo    User[]       @relation("TasksAssigned")
+
+  clientId      String?
+  client        Client?      @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  comments      TaskComment[]
+
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([status])
+  @@index([dueAt])
+  @@index([createdById])
+  @@index([clientId])
+  @@map("tasks")
+}
+
+model TaskComment {
+  id         String        @id @default(cuid())
+  taskId     String
+  task       Task          @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  authorId   String
+  author     User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  text       String        @db.Text
+  parentId   String?
+  parent     TaskComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies    TaskComment[] @relation("CommentReplies")
+
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  @@index([taskId])
+  @@index([authorId])
+  @@map("task_comments")
+}
+
+model TaskCategory {
+  id        String   @id @default(cuid())
+  name      String
+  color     String   @default("#64748b")
+  sortOrder Int      @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("task_categories")
+}
+
