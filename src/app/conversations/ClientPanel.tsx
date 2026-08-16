@@ -47,6 +47,14 @@ export function ClientPanel({
   const [instaInput, setInstaInput] = useState(client.instagramUsername || "");
   const [savingInsta, setSavingInsta] = useState(false);
 
+  // Reset inputs when selected conversation or client changes
+  useEffect(() => {
+    setNameInput(client.name || "");
+    setEditingName(false);
+    setInstaInput(client.instagramUsername || "");
+    setNoteText("");
+  }, [conversation.id, client.id, client.name, client.instagramUsername]);
+
   const visitedCount = client.visitedCount ?? 0;
   const upcomingBookings = client.upcomingBookings ?? [];
 
@@ -54,15 +62,20 @@ export function ClientPanel({
     if (!nameInput.trim()) return;
     setSavingName(true);
     try {
-      await fetch(`/api/conversations/${conversation.id}`, {
+      const res = await fetch(`/api/conversations/${conversation.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: nameInput.trim(), phone: client.phone }),
       });
+      if (res.ok) {
+        client.name = nameInput.trim();
+        toast({ title: "Имя сохранено" });
+      }
       setEditingName(false);
       if (onChanged) onChanged();
     } catch (e) {
       console.error(e);
+      toast({ title: "Ошибка при сохранении", variant: "destructive" });
     } finally {
       setSavingName(false);
     }
@@ -206,7 +219,7 @@ export function ClientPanel({
             ) : (
               <div className="flex items-center gap-1 group">
                 <h3 className="font-bold text-sm text-slate-900 truncate">{clientDisplayName(client)}</h3>
-                <button onClick={() => setEditingName(true)} className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-slate-600 shrink-0">
+                <button onClick={() => { setNameInput(client.name || ""); setEditingName(true); }} className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-slate-600 shrink-0 cursor-pointer p-0.5">
                   <Edit2 className="h-3 w-3" />
                 </button>
               </div>
