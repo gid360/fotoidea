@@ -252,6 +252,22 @@ interface WidgetData {
   availableSlots: AvailableSlot[];
 }
 
+function formatKZPhone(input: string): string {
+  const digits = input.replace(/\D/g, "");
+  if (!digits) return "+7 ";
+  let rest = digits;
+  if (rest.startsWith("7") || rest.startsWith("8")) {
+    rest = rest.slice(1);
+  }
+  rest = rest.slice(0, 10);
+
+  if (rest.length === 0) return "+7 ";
+  if (rest.length <= 3) return `+7 (${rest}`;
+  if (rest.length <= 6) return `+7 (${rest.slice(0, 3)}) ${rest.slice(3)}`;
+  if (rest.length <= 8) return `+7 (${rest.slice(0, 3)}) ${rest.slice(3, 6)}-${rest.slice(6)}`;
+  return `+7 (${rest.slice(0, 3)}) ${rest.slice(3, 6)}-${rest.slice(6, 8)}-${rest.slice(8, 10)}`;
+}
+
 export function WidgetClient({ initialSettings }: { initialSettings?: Settings }) {
   const [data, setData] = useState<WidgetData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -307,7 +323,7 @@ export function WidgetClient({ initialSettings }: { initialSettings?: Settings }
   // Booking Form State (Step 4)
   const [peopleCount, setPeopleCount] = useState<number | string>("");
   const [firstName, setFirstName] = useState("");
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState("+7 ");
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
@@ -959,10 +975,15 @@ export function WidgetClient({ initialSettings }: { initialSettings?: Settings }
                     <input
                       required
                       type="tel"
-                      placeholder={dict.phonePlaceholder}
+                      placeholder="+7 (7XX) XXX-XX-XX"
                       value={phone}
-                      onChange={e => setPhone(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 placeholder:text-slate-400 text-sm focus:outline-none focus:border-violet-600 focus:bg-white focus:ring-1 focus:ring-violet-500 transition-all"
+                      onFocus={() => {
+                        if (!phone || phone.trim() === "") {
+                          setPhone("+7 ");
+                        }
+                      }}
+                      onChange={e => setPhone(formatKZPhone(e.target.value))}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 placeholder:text-slate-400 text-sm focus:outline-none focus:border-violet-600 focus:bg-white focus:ring-1 focus:ring-violet-500 transition-all font-mono"
                     />
                   </div>
 
@@ -984,8 +1005,8 @@ export function WidgetClient({ initialSettings }: { initialSettings?: Settings }
 
                   <button
                     type="submit"
-                    disabled={submitting || !firstName || !phone}
-                    className="w-full py-3.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold text-sm transition-all shadow-md shadow-violet-200 active:scale-95 disabled:opacity-50 mt-2"
+                    disabled={submitting || !firstName.trim() || phone.replace(/\D/g, "").length < 11}
+                    className="w-full py-3.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold text-sm transition-all shadow-md shadow-violet-200 active:scale-95 disabled:opacity-50 mt-2 cursor-pointer"
                   >
                     {submitting ? dict.confirming : `${dict.confirmBooking} (${formatMoney(totalPrice)} ₸)`}
                   </button>
