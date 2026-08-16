@@ -33,3 +33,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   });
   return NextResponse.json(user);
 }
+
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await getServerSession(authOptions);
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { id } = await params;
+  try {
+    const user = await prisma.user.update({
+      where: { id },
+      data: { isActive: false },
+      select: { id: true, firstName: true, lastName: true, isActive: true },
+    });
+    return NextResponse.json({ success: true, user });
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message || "Ошибка при архивации пользователя" }, { status: 500 });
+  }
+}
