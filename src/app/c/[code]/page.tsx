@@ -34,11 +34,17 @@ export default async function PublicCertificatePage({
   }
 
   let planName = "";
+  let planDescription = "";
+  let planDurationMin: number | null = null;
   if (cert.planId) {
     const plan = await prisma.subscriptionPlan.findUnique({
       where: { id: cert.planId },
     });
-    if (plan) planName = plan.name;
+    if (plan) {
+      planName = plan.name;
+      if (plan.description) planDescription = plan.description;
+      if (plan.durationMin) planDurationMin = plan.durationMin;
+    }
   }
 
   const isExpired = cert.expiresAt ? new Date() > cert.expiresAt : false;
@@ -48,6 +54,29 @@ export default async function PublicCertificatePage({
   const expiresStr = cert.expiresAt
     ? format(new Date(cert.expiresAt), "dd MMMM yyyy", { locale: ru })
     : "Бессрочно";
+
+  let conditionLines: string[] = [];
+  if (planDescription) {
+    if (planDescription.includes("\n")) {
+      conditionLines = planDescription.split("\n").map(l => l.trim()).filter(Boolean);
+    } else {
+      conditionLines = planDescription.split(/(?<=[.!?])\s+/).map(l => l.trim()).filter(Boolean);
+    }
+  } else {
+    conditionLines = [
+      planDurationMin ? `Продолжительность ${planDurationMin} минут` : "Продолжительность 1 час",
+      "Готовые интерьерные фотозоны",
+      `Количество участников до ${cert.peopleCount || 4} человек`,
+      "Обработанные фотографии на облаке",
+    ];
+  }
+
+  if (cert.peopleCount) {
+    const pIdx = conditionLines.findIndex(l => l.toLowerCase().includes("участник") || l.toLowerCase().includes("человек"));
+    if (pIdx !== -1) {
+      conditionLines[pIdx] = `Количество участников до ${cert.peopleCount} человек`;
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#FAF8F5] text-[#3D352E] flex flex-col items-center justify-center p-4 sm:p-6 font-sans">
@@ -125,10 +154,9 @@ export default async function PublicCertificatePage({
               <Camera className="w-4 h-4 text-amber-700" /> Что входит в фотосессию:
             </h4>
             <ul className="space-y-1 text-[#7D7265] italic list-disc list-inside">
-              <li>Продолжительность 1 час</li>
-              <li>100 обработанных фотографий</li>
-              <li>Количество участников до {cert.peopleCount || 6} человек</li>
-              <li>Помощь в позировании</li>
+              {conditionLines.map((line, idx) => (
+                <li key={idx}>{line}</li>
+              ))}
             </ul>
           </div>
 
