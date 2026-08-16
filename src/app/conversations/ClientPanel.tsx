@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   User, Phone, Mail, Calendar, MessageCircle, Tag, Plus, Edit2, Check, X,
   Clock, Shield, Award, Camera, RefreshCw, AlertCircle, ShoppingBag, FileText, ChevronRight, CheckCircle2, ChevronDown, Trash2, ArrowLeft, ExternalLink,
@@ -47,6 +47,10 @@ export function ClientPanel({
   const [instaInput, setInstaInput] = useState(client.instagramUsername || "");
   const [savingInsta, setSavingInsta] = useState(false);
 
+  // Client tasks state
+  const [clientTasks, setClientTasks] = useState<any[]>([]);
+  const [loadingTasks, setLoadingTasks] = useState(false);
+
   // Task creation state
   const [taskModalOpen, setTaskModalOpen] = useState(false);
   const [taskTitle, setTaskTitle] = useState("");
@@ -60,12 +64,59 @@ export function ClientPanel({
   const [taskCategories, setTaskCategories] = useState<{ id: string; name: string; color: string }[]>([]);
   const [savingTask, setSavingTask] = useState(false);
 
+  const fetchClientTasks = useCallback(async () => {
+    const cId = client.dbClientId || (client.id && !client.id.includes("@") ? client.id : "");
+    const phone = client.phone || "";
+    if (!cId && !phone) {
+      setClientTasks([]);
+      return;
+    }
+
+    setLoadingTasks(true);
+    try {
+      const url = cId
+        ? `/api/tasks?clientId=${encodeURIComponent(cId)}`
+        : `/api/tasks?phone=${encodeURIComponent(phone)}`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : (data.tasks || []);
+        setClientTasks(list);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingTasks(false);
+    }
+  }, [client.dbClientId, client.id, client.phone]);
+
+  useEffect(() => {
+    fetchClientTasks();
+  }, [fetchClientTasks]);
+
   useEffect(() => {
     fetch("/api/tasks/categories")
       .then((r) => r.json())
       .then((d) => setTaskCategories(d.categories || []))
       .catch(console.error);
   }, []);
+
+  async function handleToggleTaskDone(taskId: string, currentStatus: string) {
+    const newStatus = currentStatus === "DONE" ? "PENDING" : "DONE";
+    try {
+      const res = await fetch(`/api/tasks/${taskId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (res.ok) {
+        toast({ title: newStatus === "DONE" ? "Задача выполнена" : "Задача возвращена в работу" });
+        fetchClientTasks();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
 
   async function handleCreateTask() {
     if (!taskTitle.trim()) return;
@@ -87,6 +138,7 @@ export function ClientPanel({
         setTaskModalOpen(false);
         setTaskTitle("");
         setTaskDescription("");
+        fetchClientTasks();
       } else {
         toast({ title: "Ошибка создания задачи", variant: "destructive" });
       }
@@ -269,13 +321,31 @@ export function ClientPanel({
                 </Button>
               </div>
             ) : (
-              <div className="flex items-center gap-1 group">
-                <h3 className="font-bold text-sm text-slate-900 truncate flex items-center gap-1.5">
-                  <span className="truncate">{clientDisplayName(client)}</span>
-                  {(client.dbClientId || (client.id && !client.id.includes("@"))) && (
-                    <span title="Клиент сохранён в базе данных" className="inline-flex items-center">
-                      <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
-                    </span>
+              <div className="flex items-center gap-1 group min-w-0">
+                <h3 className="font-bold text-sm text-slate-900 truncate flex items-center gap-1.5 min-w-0">
+                  {client.dbClientId || (client.id && !client.id.includes("@")) ? (
+                    <a
+                      href={`/clients/${client.dbClientId || client.id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="truncate hover:text-indigo-600 hover:underline cursor-pointer flex items-center gap-1.5"
+                      title="Открыть карточку клиента в базе"
+                    >
+                      <span className="truncate">{clientDisplayName(client)}</span>
+                      <span title="Клиент сохранён в базе данных" className="inline-flex items-center">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                      </span>
+                    </a>
+                  ) : (
+                    <a
+                      href={`/clients?search=${encodeURIComponent((client.phone || "").slice(-10) || clientDisplayName(client))}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="truncate hover:text-indigo-600 hover:underline cursor-pointer flex items-center gap-1.5"
+                      title="Поиск клиента в базе"
+                    >
+                      <span className="truncate">{clientDisplayName(client)}</span>
+                    </a>
                   )}
                 </h3>
                 <button
@@ -560,6 +630,114 @@ export function ClientPanel({
             </div>
           </div>
         )}
+
+        {/* Client Tasks Section */}
+        <div className="space-y-1.5 pt-2 border-t">
+          <div className="flex items-center justify-between">
+            <label className="font-semibold text-slate-700 flex items-center gap-1.5 text-xs">
+              <CheckSquare className="h-3.5 w-3.5 text-violet-600" />
+              Задачи
+              {clientTasks.length > 0 && (
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-violet-100 text-violet-800 font-semibold">
+                  {clientTasks.length}
+                </Badge>
+              )}
+            </label>
+            <button
+              onClick={() => setTaskModalOpen(true)}
+              className="text-[11px] text-violet-600 hover:text-violet-800 hover:underline flex items-center gap-0.5 font-medium cursor-pointer"
+            >
+              <Plus className="h-3 w-3" /> Добавить
+            </button>
+          </div>
+
+          {loadingTasks ? (
+            <div className="flex items-center justify-center py-2 text-slate-400 text-xs gap-1.5">
+              <RefreshCw className="h-3 w-3 animate-spin" /> Загрузка задач...
+            </div>
+          ) : clientTasks.length > 0 ? (
+            <div className="space-y-1.5">
+              {clientTasks.map((t) => {
+                const isDone = t.status === "DONE";
+                const isOverdue = t.status === "OVERDUE";
+                return (
+                  <div
+                    key={t.id}
+                    className={cn(
+                      "p-2 rounded-lg border text-xs space-y-1 transition-all group",
+                      isDone
+                        ? "bg-slate-50 border-slate-200 opacity-75"
+                        : isOverdue
+                        ? "bg-rose-50/70 border-rose-200 hover:border-rose-300"
+                        : "bg-violet-50/60 border-violet-100 hover:border-violet-200"
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-1.5">
+                      <div className="flex items-start gap-1.5 min-w-0 flex-1">
+                        <button
+                          onClick={() => handleToggleTaskDone(t.id, t.status)}
+                          className={cn(
+                            "mt-0.5 h-3.5 w-3.5 rounded border flex items-center justify-center shrink-0 transition-colors cursor-pointer",
+                            isDone
+                              ? "bg-emerald-600 border-emerald-600 text-white"
+                              : "border-slate-300 hover:border-violet-500 bg-white"
+                          )}
+                          title={isDone ? "Вернуть в работу" : "Отметить выполненной"}
+                        >
+                          {isDone && <Check className="h-2.5 w-2.5 stroke-[3]" />}
+                        </button>
+                        <a
+                          href={`/tasks/${t.id}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className={cn(
+                            "font-medium hover:underline leading-tight truncate block",
+                            isDone ? "line-through text-slate-500" : isOverdue ? "text-rose-900 font-semibold" : "text-slate-900"
+                          )}
+                          title="Открыть задачу"
+                        >
+                          {t.title}
+                        </a>
+                      </div>
+                      <Badge
+                        variant="secondary"
+                        className={cn(
+                          "text-[9px] px-1 py-0 h-4 shrink-0 font-medium",
+                          isDone
+                            ? "bg-emerald-100 text-emerald-700"
+                            : isOverdue
+                            ? "bg-rose-100 text-rose-700 font-bold"
+                            : "bg-amber-100 text-amber-700"
+                        )}
+                      >
+                        {isDone ? "Готово" : isOverdue ? "Просрочена" : "В работе"}
+                      </Badge>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[10px] text-slate-500 pt-0.5">
+                      {t.dueAt ? (
+                        <span className={cn("flex items-center gap-1 font-mono", isOverdue && !isDone && "text-rose-600 font-bold")}>
+                          <Clock className="h-2.5 w-2.5" />
+                          {formatDateTime(t.dueAt)}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">Без срока</span>
+                      )}
+
+                      {t.assignedTo && t.assignedTo.length > 0 && (
+                        <span className="truncate max-w-[110px] text-slate-600 font-medium">
+                          {t.assignedTo.map((u: any) => u.name).join(", ")}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-[11px] text-slate-400 py-1">Задач по клиенту нет</p>
+          )}
+        </div>
 
         {/* Upcoming Bookings */}
         <div className="space-y-1.5 pt-2 border-t">

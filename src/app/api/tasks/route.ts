@@ -42,6 +42,20 @@ export async function GET(req: NextRequest) {
       where.createdById = userId;
     }
 
+    const clientIdParam = url.searchParams.get("clientId");
+    const phoneParam = url.searchParams.get("phone");
+
+    if (clientIdParam) {
+      where.clientId = clientIdParam;
+    } else if (phoneParam) {
+      const cleanPhone = phoneParam.replace(/\D/g, "").slice(-10);
+      if (cleanPhone) {
+        where.client = {
+          phone: { contains: cleanPhone },
+        };
+      }
+    }
+
     if (from || to) {
       where.dueAt = {};
       if (from) where.dueAt.gte = new Date(from);

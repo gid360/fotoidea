@@ -676,11 +676,31 @@ export function ChatPanel({
           >
             <div className="flex items-center gap-1.5 flex-wrap">
               <h2 className="font-bold text-xs sm:text-sm truncate text-slate-900 flex items-center gap-1.5">
-                <span className="truncate">{clientDisplayName(client)}</span>
-                {(client.dbClientId || (client.id && !client.id.includes("@"))) && (
-                  <span title="Клиент сохранён в базе данных" className="inline-flex items-center">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                  </span>
+                {client.dbClientId || (client.id && !client.id.includes("@")) ? (
+                  <a
+                    href={`/clients/${client.dbClientId || client.id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="truncate hover:text-indigo-600 hover:underline cursor-pointer flex items-center gap-1.5"
+                    title="Открыть карточку клиента в базе"
+                  >
+                    <span className="truncate">{clientDisplayName(client)}</span>
+                    <span title="Клиент сохранён в базе данных" className="inline-flex items-center">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                    </span>
+                  </a>
+                ) : (
+                  <a
+                    href={`/clients?search=${encodeURIComponent((client.phone || "").slice(-10) || clientDisplayName(client))}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="truncate hover:text-indigo-600 hover:underline cursor-pointer flex items-center gap-1.5"
+                    title="Поиск клиента в базе"
+                  >
+                    <span className="truncate">{clientDisplayName(client)}</span>
+                  </a>
                 )}
               </h2>
               {formatPhonePretty(client.phone) && (
