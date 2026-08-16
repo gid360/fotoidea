@@ -11,12 +11,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import { cn, formatMoney, formatDate } from "@/lib/utils";
 import { addDays } from "date-fns";
-import { PageTabs } from "@/components/PageTabs";
-
-const SUB_TABS = [
-  { label: "Услуги", href: "/subscriptions/plans" },
-  { label: "Сертификаты", href: "/certificates" },
-];
 import { toast } from "@/lib/use-toast";
 
 interface Certificate {
@@ -233,7 +227,6 @@ export function CertificatesClient() {
 
   return (
     <div className="flex flex-col h-full">
-      <PageTabs tabs={SUB_TABS} />
       {/* Шапка */}
       <div className="p-4 border-b bg-background shrink-0 space-y-3">
         <div className="flex items-center justify-between">
