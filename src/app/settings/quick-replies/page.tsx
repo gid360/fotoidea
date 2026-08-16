@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Plus, Edit2, Trash2, Save, FileText, RefreshCw, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,7 @@ interface QuickReplyItem {
 }
 
 export default function QuickRepliesSettingsPage() {
+  const qc = useQueryClient();
   const [replies, setReplies] = useState<QuickReplyItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -94,6 +96,7 @@ export default function QuickRepliesSettingsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ replies: items }),
       });
+      qc.invalidateQueries({ queryKey: ["quick-replies"] });
       toast({ title: "Сохранено", description: "Шаблоны быстрых ответов обновлены" });
     } catch (e) {
       console.error(e);

@@ -22,12 +22,7 @@ import { clientDisplayName, formatPhonePretty } from "./types";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 
-const QUICK_REPLIES = [
-  { title: "Приветствие", text: "Здравствуйте! Фотостудия FOTOIDEA рада вам помочь. На какую дату и время вы бы хотели забронировать съемку?" },
-  { title: "Адрес и вход", text: "Наш адрес: г. Уральск, пр. Абулхаир хана 147, ЖК Азимут, 1 этаж (вход со двора). Ждем вас!" },
-  { title: "Оплата Kaspi", text: "Оплату брони вы можете произвести через Kaspi QR или наличными администратору перед началом съемки." },
-  { title: "Сертификаты", text: "Подарочный сертификат можно приобрести как в электронном виде, так и в брендированном бумажном конверте." },
-];
+
 
 const EMOJI_CATEGORIES = [
   {
@@ -413,6 +408,15 @@ export function ChatPanel({
     queryKey: ["conversations-list"],
     queryFn: () => fetch("/api/conversations").then((r) => r.json()).catch(() => []),
     enabled: forwardModalOpen,
+  });
+
+  const { data: quickReplies = [] } = useQuery<{ id: string; title: string; text: string }[]>({
+    queryKey: ["quick-replies"],
+    queryFn: () =>
+      fetch("/api/settings/quick-replies")
+        .then((r) => r.json())
+        .then((d) => d.replies || [])
+        .catch(() => []),
   });
 
   const filteredForwardTargets = useMemo(() => {
@@ -1042,16 +1046,22 @@ export function ChatPanel({
             <div className="font-semibold text-xs text-slate-700 dark:text-slate-200 px-2 py-1 border-b mb-1 flex items-center justify-between">
               <span>Быстрые ответы / Шаблоны</span>
             </div>
-            {QUICK_REPLIES.map((tmpl, idx) => (
-              <button
-                key={idx}
-                onClick={() => setInputText(tmpl.text)}
-                className="w-full text-left p-2 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              >
-                <p className="font-semibold text-slate-900 dark:text-slate-100">{tmpl.title}</p>
-                <p className="text-slate-500 text-[11px] truncate mt-0.5">{tmpl.text}</p>
-              </button>
-            ))}
+            {quickReplies.length === 0 ? (
+              <div className="p-3 text-center text-[11px] text-muted-foreground">
+                Шаблоны не найдены
+              </div>
+            ) : (
+              quickReplies.map((tmpl) => (
+                <button
+                  key={tmpl.id}
+                  onClick={() => setInputText(tmpl.text)}
+                  className="w-full text-left p-2 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  <p className="font-semibold text-slate-900 dark:text-slate-100">{tmpl.title}</p>
+                  <p className="text-slate-500 text-[11px] truncate mt-0.5">{tmpl.text}</p>
+                </button>
+              ))
+            )}
             <div className="pt-1.5 border-t mt-1">
               <Link
                 href="/settings/quick-replies"

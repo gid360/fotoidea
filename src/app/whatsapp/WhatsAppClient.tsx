@@ -21,24 +21,6 @@ import { toast } from "@/lib/use-toast";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
-const QUICK_TEMPLATES = [
-  {
-    title: "Приветствие и бронь",
-    text: "Здравствуйте! Фотостудия FOTOIDEA рада вам помочь. На какую дату и время вы бы хотели забронировать съемку?",
-  },
-  {
-    title: "Адрес и локация",
-    text: "Наш адрес: г. Уральск, пр. Абулхаир хана 147, ЖК Азимут, 1 этаж (вход со двора). Ждем вас!",
-  },
-  {
-    title: "Оплата и реквизиты",
-    text: "Оплату брони вы можете произвести через Kaspi QR или наличными администратору перед началом съемки.",
-  },
-  {
-    title: "Подарочные сертификаты",
-    text: "Подарочный сертификат можно приобрести как в электронном виде, так и в брендированном бумажном конверте.",
-  },
-];
 import { ru } from "date-fns/locale";
 
 interface WaSession {
@@ -326,6 +308,15 @@ export function WhatsAppClient() {
     queryFn: () => fetch("/api/whatsapp/chats").then(r => r.json()),
     refetchInterval: 15000,
     enabled: session?.provider === "EVOLUTION",
+  });
+
+  const { data: quickReplies = [] } = useQuery<{ id: string; title: string; text: string }[]>({
+    queryKey: ["quick-replies"],
+    queryFn: () =>
+      fetch("/api/settings/quick-replies")
+        .then((r) => r.json())
+        .then((d) => d.replies || [])
+        .catch(() => []),
   });
 
   const chats = chatsData?.chats ?? [];
@@ -924,16 +915,22 @@ export function WhatsAppClient() {
                         <div className="font-semibold text-xs text-slate-700 px-2 py-1 border-b mb-1 flex items-center justify-between">
                           <span>Быстрые ответы / Шаблоны</span>
                         </div>
-                        {QUICK_TEMPLATES.map((tmpl, idx) => (
-                          <button
-                            key={idx}
-                            onClick={() => setReplyText(tmpl.text)}
-                            className="w-full text-left p-2 rounded hover:bg-slate-100 transition-colors"
-                          >
-                            <p className="font-medium text-slate-900">{tmpl.title}</p>
-                            <p className="text-slate-500 text-[11px] truncate mt-0.5">{tmpl.text}</p>
-                          </button>
-                        ))}
+                        {quickReplies.length === 0 ? (
+                          <div className="p-3 text-center text-[11px] text-muted-foreground">
+                            Шаблоны не найдены
+                          </div>
+                        ) : (
+                          quickReplies.map((tmpl) => (
+                            <button
+                              key={tmpl.id}
+                              onClick={() => setReplyText(tmpl.text)}
+                              className="w-full text-left p-2 rounded hover:bg-slate-100 transition-colors cursor-pointer"
+                            >
+                              <p className="font-medium text-slate-900">{tmpl.title}</p>
+                              <p className="text-slate-500 text-[11px] truncate mt-0.5">{tmpl.text}</p>
+                            </button>
+                          ))
+                        )}
                         <div className="pt-1.5 border-t mt-1">
                           <Link
                             href="/settings/quick-replies"
