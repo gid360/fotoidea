@@ -216,7 +216,7 @@ export function Sidebar({
     role === UserRole.PHOTOGRAPHER ? "Фотограф" :
     role === UserRole.TRAINER ? "Тренер" : "";
 
-  const logoUrl = settings.logoUrl || "/logo.svg";
+  const logoUrl = settings.logoUrl || "/fotoidea-logo.png";
 
   return (
     <aside className={cn(

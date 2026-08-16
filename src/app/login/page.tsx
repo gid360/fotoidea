@@ -15,7 +15,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [logoUrl, setLogoUrl] = useState<string | null>("/logo.svg");
+  const [logoUrl, setLogoUrl] = useState<string | null>("/fotoidea-logo.png");
   const [studioName, setStudioName] = useState("Fotoidea");
 
   function handleLoginChange(e: React.ChangeEvent<HTMLInputElement>) {
