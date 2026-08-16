@@ -275,14 +275,14 @@ export async function GET(
     };
 
     // 3. Recipient Field & Certificate Code
-    const codeY = height - 165;
+    const codeY = 296;
 
     if (cert.recipientText) {
-      drawCenteredText(cert.recipientText, fontRegular, 8.5, codeY + 24, textColor);
+      drawCenteredText(cert.recipientText, fontRegular, 8.5, codeY + 18, textColor);
     }
 
     const codeText = `№ ${cert.code}`;
-    drawCenteredText(codeText, fontBold, 18, codeY, textColor);
+    drawCenteredText(codeText, fontBold, 17, codeY, textColor);
 
     // Expiration date directly below Certificate Number
     const expiresStr = cert.expiresAt ? format(new Date(cert.expiresAt), "dd.MM.yyyy") : "Бессрочно";
@@ -297,10 +297,8 @@ export async function GET(
       mainServiceTitle = planName;
     }
 
-    const detailsY = codeY - 48;
-    drawCenteredText(mainServiceTitle, fontBold, 11, detailsY, textColor);
-
-    let currentY = detailsY - 15;
+    const detailsY = 264;
+    drawCenteredText(mainServiceTitle, fontBold, 10.5, detailsY, textColor);
 
     let rawRules = "";
     if (cert.type === "NOMINAL") {
@@ -311,16 +309,8 @@ export async function GET(
       rawRules = t.rulesText || "Готовые интерьерные фотозоны\nПрофессиональный фотограф\nКоличество участников до 4 человек\nОбработанные фотографии на облаке";
     }
 
-    // Split sentences or lines cleanly
-    let lines: string[] = [];
-    if (rawRules.includes("\n")) {
-      lines = wrapTextLines(rawRules, 48);
-    } else {
-      const sentences = rawRules.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 0);
-      for (const s of sentences) {
-        lines.push(...wrapTextLines(s, 48));
-      }
-    }
+    // Wrap and process ALL description lines
+    let lines: string[] = wrapTextLines(rawRules, 50);
 
     if (cert.peopleCount) {
       const idx = lines.findIndex(l => l.toLowerCase().includes("участник") || l.toLowerCase().includes("человек"));
@@ -329,35 +319,59 @@ export async function GET(
       }
     }
 
-    lines.slice(0, 5).forEach((line) => {
-      drawCenteredText(line.trim(), fontRegular, 7.5, currentY, subtextColor);
-      currentY -= 12;
+    const lineCount = lines.length;
+    let descFontSize = 7.5;
+    let lineSpacing = 11.5;
+    if (lineCount > 7) {
+      descFontSize = 6.2;
+      lineSpacing = 8.5;
+    } else if (lineCount > 4) {
+      descFontSize = 7.0;
+      lineSpacing = 10.0;
+    }
+
+    let currentY = detailsY - 13;
+    lines.forEach((line) => {
+      drawCenteredText(line.trim(), fontRegular, descFontSize, currentY, subtextColor);
+      currentY -= lineSpacing;
     });
 
-    // 5. QR Code Generation (Centered Dark Box)
-    const qrSectionY = height - 305;
-    const boxSize = 52;
+    // 5. QR Code Generation (Centered White Rounded Card with subtle border)
+    const boxSize = 54;
     const boxX = (width - boxSize) / 2;
-    const boxY = qrSectionY - 20;
-    const qrBoxPath = getRoundedRectPath(boxX, boxY, boxSize, boxSize, 10);
+    const boxY = 82;
+    const qrBoxPath = getRoundedRectPath(boxX, boxY, boxSize, boxSize, 8);
 
+    // Draw white background
     page.drawSvgPath(qrBoxPath, {
-      color: rgb(0.11, 0.11, 0.11),
+      color: rgb(1, 1, 1),
     });
 
-    const origin = req.nextUrl.origin || "https://fotoidea.kz";
-    const publicUrl = `${origin}/c/${cert.code}`;
+    // Draw subtle border around white rounded box
+    const qrBorderPath = getRoundedRectPath(boxX, boxY, boxSize, boxSize, 8);
+    page.drawSvgPath(qrBorderPath, {
+      borderColor: borderColor,
+      borderWidth: 0.8,
+    });
+
+    // Correct public URL for electronic certificate (ensuring https://crm.fotoidea.kz)
+    const hostHeader = req.headers.get("x-forwarded-host") || req.headers.get("host") || "";
+    let publicUrl = `https://crm.fotoidea.kz/c/${cert.code}`;
+    if (hostHeader && !hostHeader.includes("localhost") && !hostHeader.includes("127.0.0.1") && !hostHeader.includes("0.0.0.0")) {
+      const proto = req.headers.get("x-forwarded-proto") || "https";
+      publicUrl = `${proto}://${hostHeader}/c/${cert.code}`;
+    }
 
     const qrDataUrl = await QRCode.toDataURL(publicUrl, {
-      margin: 1,
-      width: 140,
+      margin: 0,
+      width: 180,
       color: {
-        dark: "#FFFFFF",
-        light: "#1C1B18",
+        dark: "#1C1B18",
+        light: "#FFFFFF",
       },
     });
     const qrImage = await pdfDoc.embedPng(qrDataUrl);
-    const qrImageSize = 42;
+    const qrImageSize = 44;
 
     page.drawImage(qrImage, {
       x: (width - qrImageSize) / 2,
@@ -366,7 +380,7 @@ export async function GET(
       height: qrImageSize,
     });
 
-    drawCenteredText("Электронная версия сертификата", fontMedium, 6.5, qrSectionY - 30, subtextColor);
+    drawCenteredText("Электронная версия сертификата", fontMedium, 6.5, boxY - 11, subtextColor);
 
     // 6. Contacts & Address (Bottom Section)
     const phone = t.studioPhone || "+7 777 79 79 888";
