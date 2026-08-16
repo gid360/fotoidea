@@ -291,29 +291,37 @@ export function CertificatesClient() {
   return (
     <div className="flex flex-col h-full">
       {/* Шапка */}
-      <div className="p-4 border-b bg-background shrink-0 space-y-3">
-        <div className="flex items-center justify-between">
+      <div className="p-3 sm:p-4 border-b bg-background shrink-0 space-y-2.5">
+        <div className="flex items-center justify-between gap-2">
           <div>
-            <h1 className="text-xl font-bold">Сертификаты</h1>
-            <p className="text-sm text-muted-foreground">{certs.length} записей</p>
+            <h1 className="text-lg sm:text-xl font-bold">Сертификаты</h1>
+            <p className="text-xs text-muted-foreground">{certs.length} записей</p>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => setEditorOpen(true)}>
-              <Palette className="h-4 w-4 mr-1.5 text-amber-500" /> Шаблон дизайна (10×15 см)
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <Button variant="outline" size="sm" className="h-8 px-2 sm:px-3 text-xs" onClick={() => setEditorOpen(true)}>
+              <Palette className="h-3.5 w-3.5 mr-1 text-amber-500" />
+              <span className="hidden sm:inline">Шаблон дизайна (10×15 см)</span>
+              <span className="sm:hidden">Шаблон</span>
             </Button>
-            <Button onClick={openCreate}>
-              <Plus className="h-4 w-4 mr-1.5" /> Создать сертификат
+            <Button size="sm" className="h-8 px-2.5 sm:px-3 text-xs" onClick={openCreate}>
+              <Plus className="h-3.5 w-3.5 mr-1" />
+              <span className="hidden sm:inline">Создать сертификат</span>
+              <span className="sm:hidden">Создать</span>
             </Button>
           </div>
         </div>
 
-        <div className="flex gap-3">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Поиск по коду, покупателю..." className="pl-9"
-              value={search} onChange={e => setSearch(e.target.value)} />
+        <div className="flex flex-col sm:flex-row gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Поиск по коду, покупателю..."
+              className="pl-8 h-9 text-xs sm:text-sm w-full"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
           </div>
-          <div className="flex gap-1">
+          <div className="flex items-center gap-1 overflow-x-auto pb-0.5 sm:pb-0 shrink-0">
             {[
               { value: "",          label: "Все" },
               { value: "SOLD",      label: "Проданные" },
@@ -321,12 +329,13 @@ export function CertificatesClient() {
               { value: "EXPIRED",   label: "Истёкшие" },
             ].map(f => (
               <button key={f.value}
+                type="button"
                 onClick={() => setStatusFilter(f.value)}
                 className={cn(
-                  "px-3 py-1.5 text-sm rounded-md border transition-colors",
+                  "px-2.5 py-1 text-xs rounded-md border transition-colors whitespace-nowrap shrink-0",
                   statusFilter === f.value
-                    ? "bg-foreground text-background border-foreground"
-                    : "hover:bg-muted"
+                    ? "bg-foreground text-background border-foreground font-semibold"
+                    : "hover:bg-muted text-muted-foreground"
                 )}>
                 {f.label}
               </button>
@@ -336,108 +345,210 @@ export function CertificatesClient() {
       </div>
 
       {/* Список */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto p-2 sm:p-4">
         {certs.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
-            <Gift className="h-12 w-12 mb-3 opacity-30" />
-            <p>Сертификатов не найдено</p>
-            <Button className="mt-4" onClick={openCreate}><Plus className="h-4 w-4 mr-1.5" /> Создать первый</Button>
+            <Gift className="h-10 w-10 mb-2 opacity-30" />
+            <p className="text-sm">Сертификатов не найдено</p>
+            <Button size="sm" className="mt-3" onClick={openCreate}><Plus className="h-3.5 w-3.5 mr-1" /> Создать первый</Button>
           </div>
         ) : (
-          <table className="w-full">
-            <thead className="sticky top-0 bg-muted/50 backdrop-blur-sm z-10">
-              <tr className="text-xs text-muted-foreground uppercase tracking-wide">
-                <th className="text-left px-4 py-2.5 font-medium">Код</th>
-                <th className="text-left px-4 py-2.5 font-medium">Тип / Номинал</th>
-                <th className="text-left px-4 py-2.5 font-medium">Покупатель</th>
-                <th className="text-left px-4 py-2.5 font-medium">Статус</th>
-                <th className="text-left px-4 py-2.5 font-medium">Активирован на</th>
-                <th className="text-left px-4 py-2.5 font-medium">Истекает</th>
-                <th className="text-right px-4 py-2.5 font-medium">Действия</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
+          <div className="space-y-4">
+            {/* Мобильная версия: Карточки */}
+            <div className="grid grid-cols-1 gap-2 md:hidden">
               {certs.map(cert => {
                 const sc = STATUS_CONFIG[cert.status];
                 return (
-                  <tr key={cert.id} className="hover:bg-muted/40 transition-colors">
-                    <td className="px-4 py-3">
+                  <div
+                    key={cert.id}
+                    className="p-3 rounded-lg border bg-card shadow-2xs space-y-2"
+                  >
+                    <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-1.5">
-                        <span className="font-mono text-sm font-semibold">{cert.code}</span>
-                        <button onClick={() => copyCode(cert)}
-                          className="text-muted-foreground hover:text-foreground transition-colors">
+                        <span className="font-mono text-xs font-bold tracking-wider">{cert.code}</span>
+                        <button
+                          onClick={() => copyCode(cert)}
+                          className="text-muted-foreground hover:text-foreground p-0.5"
+                          title="Скопировать код"
+                        >
                           {copiedId === cert.id
                             ? <CheckCheck className="h-3.5 w-3.5 text-green-500" />
                             : <Copy className="h-3.5 w-3.5" />}
                         </button>
                       </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      {cert.type === "NOMINAL" ? (
-                        <div>
-                          <p className="text-sm font-medium">Номинальный</p>
-                          <p className="text-xs text-muted-foreground">{formatMoney(cert.nominalAmount ?? 0)} ₸ на депозит</p>
-                        </div>
-                      ) : (
-                        <div>
-                          <p className="text-sm font-medium">Пакетный</p>
-                          <p className="text-xs text-muted-foreground">{cert.planName ?? "—"}</p>
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {cert.buyerName ? (
-                        <div>
-                          <p className="text-sm">{cert.buyerName}</p>
-                          {cert.buyerPhone && <p className="text-xs text-muted-foreground">{cert.buyerPhone}</p>}
-                        </div>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium", sc.className)}>
+
+                      <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-semibold", sc.className)}>
                         {sc.label}
                       </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      {cert.client ? (
-                        <div>
-                          <p className="text-sm">{cert.client.lastName} {cert.client.firstName}</p>
-                          <p className="text-xs text-muted-foreground">{cert.activatedAt ? formatDate(cert.activatedAt) : ""}</p>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">
-                      {cert.expiresAt ? formatDate(cert.expiresAt) : "—"}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex justify-end gap-1">
-                        <Button size="sm" variant="outline" className="h-7 px-2 text-xs"
-                          onClick={() => window.open(`/api/certificates/${cert.id}/pdf?t=${Date.now()}`, "_blank")}>
-                          <FileText className="h-3.5 w-3.5 mr-1 text-red-500" /> PDF
-                        </Button>
-                        {cert.status === "SOLD" && (
-                          <>
-                            <Button size="sm" variant="outline" className="h-7 px-2 text-xs"
-                              onClick={() => { setSelectedClient(null); setClientQuery(""); setActivateOpen(cert); }}>
-                              Активировать
-                            </Button>
-                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground"
-                              onClick={() => expire(cert)}>
-                              <X className="h-3.5 w-3.5" />
-                            </Button>
-                          </>
-                        )}
+                    </div>
+
+                    <div className="text-xs space-y-1">
+                      <div className="flex items-center justify-between text-muted-foreground">
+                        <span>Тип:</span>
+                        <span className="font-semibold text-foreground">
+                          {cert.type === "NOMINAL"
+                            ? `${formatMoney(cert.nominalAmount ?? 0)} ₸`
+                            : (cert.planName ?? "Пакетный")}
+                        </span>
                       </div>
-                    </td>
-                  </tr>
+
+                      {cert.buyerName && (
+                        <div className="flex items-center justify-between text-muted-foreground">
+                          <span>Покупатель:</span>
+                          <span className="text-foreground">{cert.buyerName} {cert.buyerPhone ? `(${cert.buyerPhone})` : ""}</span>
+                        </div>
+                      )}
+
+                      {cert.client && (
+                        <div className="flex items-center justify-between text-muted-foreground">
+                          <span>Активирован:</span>
+                          <span className="text-foreground">{cert.client.lastName} {cert.client.firstName}</span>
+                        </div>
+                      )}
+
+                      {cert.expiresAt && (
+                        <div className="flex items-center justify-between text-muted-foreground text-[11px]">
+                          <span>Истекает:</span>
+                          <span>{formatDate(cert.expiresAt)}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="pt-2 border-t flex items-center justify-end gap-1.5">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => window.open(`/api/certificates/${cert.id}/pdf?t=${Date.now()}`, "_blank")}
+                      >
+                        <FileText className="h-3.5 w-3.5 mr-1 text-red-500" /> PDF
+                      </Button>
+
+                      {cert.status === "SOLD" && (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="default"
+                            className="h-7 px-2.5 text-xs font-semibold"
+                            onClick={() => { setSelectedClient(null); setClientQuery(""); setActivateOpen(cert); }}
+                          >
+                            Активировать
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                            onClick={() => expire(cert)}
+                            title="Пометить как истекший"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 );
               })}
-            </tbody>
-          </table>
+            </div>
+
+            {/* Десктопная версия: Таблица */}
+            <div className="hidden md:block border rounded-xl overflow-hidden bg-card shadow-sm">
+              <table className="w-full">
+                <thead className="bg-muted/50 border-b">
+                  <tr className="text-xs text-muted-foreground uppercase tracking-wide">
+                    <th className="text-left px-4 py-2.5 font-medium">Код</th>
+                    <th className="text-left px-4 py-2.5 font-medium">Тип / Номинал</th>
+                    <th className="text-left px-4 py-2.5 font-medium">Покупатель</th>
+                    <th className="text-left px-4 py-2.5 font-medium">Статус</th>
+                    <th className="text-left px-4 py-2.5 font-medium">Активирован на</th>
+                    <th className="text-left px-4 py-2.5 font-medium">Истекает</th>
+                    <th className="text-right px-4 py-2.5 font-medium">Действия</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {certs.map(cert => {
+                    const sc = STATUS_CONFIG[cert.status];
+                    return (
+                      <tr key={cert.id} className="hover:bg-muted/40 transition-colors">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono text-sm font-semibold">{cert.code}</span>
+                            <button onClick={() => copyCode(cert)}
+                              className="text-muted-foreground hover:text-foreground transition-colors">
+                              {copiedId === cert.id
+                                ? <CheckCheck className="h-3.5 w-3.5 text-green-500" />
+                                : <Copy className="h-3.5 w-3.5" />}
+                            </button>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          {cert.type === "NOMINAL" ? (
+                            <div>
+                              <p className="text-sm font-medium">Номинальный</p>
+                              <p className="text-xs text-muted-foreground">{formatMoney(cert.nominalAmount ?? 0)} ₸ на депозит</p>
+                            </div>
+                          ) : (
+                            <div>
+                              <p className="text-sm font-medium">Пакетный</p>
+                              <p className="text-xs text-muted-foreground">{cert.planName ?? "—"}</p>
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          {cert.buyerName ? (
+                            <div>
+                              <p className="text-sm">{cert.buyerName}</p>
+                              {cert.buyerPhone && <p className="text-xs text-muted-foreground">{cert.buyerPhone}</p>}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium", sc.className)}>
+                            {sc.label}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          {cert.client ? (
+                            <div>
+                              <p className="text-sm">{cert.client.lastName} {cert.client.firstName}</p>
+                              <p className="text-xs text-muted-foreground">{cert.activatedAt ? formatDate(cert.activatedAt) : ""}</p>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground">
+                          {cert.expiresAt ? formatDate(cert.expiresAt) : "—"}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex justify-end gap-1">
+                            <Button size="sm" variant="outline" className="h-7 px-2 text-xs"
+                              onClick={() => window.open(`/api/certificates/${cert.id}/pdf?t=${Date.now()}`, "_blank")}>
+                              <FileText className="h-3.5 w-3.5 mr-1 text-red-500" /> PDF
+                            </Button>
+                            {cert.status === "SOLD" && (
+                              <>
+                                <Button size="sm" variant="outline" className="h-7 px-2 text-xs"
+                                  onClick={() => { setSelectedClient(null); setClientQuery(""); setActivateOpen(cert); }}>
+                                  Активировать
+                                </Button>
+                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground"
+                                  onClick={() => expire(cert)}>
+                                  <X className="h-3.5 w-3.5" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
         )}
       </div>
 

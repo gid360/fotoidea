@@ -260,40 +260,41 @@ export function PlansClient() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-4 border-b bg-background shrink-0 space-y-3">
-        <div className="flex items-center justify-between">
+      <div className="p-3 sm:p-4 border-b bg-background shrink-0 space-y-2.5">
+        <div className="flex items-center justify-between gap-2">
           <div>
-            <h1 className="text-xl font-bold">Услуги</h1>
-            <p className="text-sm text-muted-foreground">
-              {plans.filter(p => p.isActive).length} активных услуг · Порядок перетягивается мышкой
+            <h1 className="text-lg sm:text-xl font-bold">Услуги</h1>
+            <p className="text-xs text-muted-foreground">
+              {plans.filter(p => p.isActive).length} активных
+              <span className="hidden sm:inline"> · Порядок перетягивается мышкой</span>
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
-              <Switch checked={showArchived} onCheckedChange={setShowArchived} />
+          <div className="flex items-center gap-2 sm:gap-3">
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+              <Switch checked={showArchived} onCheckedChange={setShowArchived} className="scale-75 origin-right" />
               Архивные
             </label>
-            <Button onClick={openCreate}>
-              <Plus className="h-4 w-4 mr-1.5" /> Добавить услугу
+            <Button size="sm" onClick={openCreate} className="h-8 px-2.5 text-xs sm:text-sm font-medium">
+              <Plus className="h-3.5 w-3.5 mr-1" /> Добавить
             </Button>
           </div>
         </div>
 
         {/* Фильтр по категориям и поиск */}
-        <div className="flex flex-col sm:flex-row gap-2 pt-1">
+        <div className="flex flex-col sm:flex-row gap-1.5 sm:gap-2">
           <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
-              placeholder="Поиск по названию или описанию..."
-              className="pl-9 text-sm"
+              placeholder="Поиск услуги..."
+              className="pl-8 h-8 text-xs sm:text-sm"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
             />
           </div>
 
-          <div className="w-56 shrink-0">
+          <div className="w-full sm:w-52 shrink-0">
             <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-              <SelectTrigger className="w-full text-sm">
+              <SelectTrigger className="w-full h-8 text-xs sm:text-sm">
                 <SelectValue placeholder="Категория" />
               </SelectTrigger>
               <SelectContent>
@@ -307,137 +308,123 @@ export function PlansClient() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto p-4">
+      <div className="flex-1 overflow-auto p-2 sm:p-4">
         {visible.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
-            <Camera className="h-12 w-12 mb-3 opacity-30" />
-            <p>Услуг пока нет</p>
-            <Button className="mt-4" onClick={openCreate}><Plus className="h-4 w-4 mr-1.5" /> Создать первую</Button>
+            <Camera className="h-10 w-10 mb-2 opacity-30" />
+            <p className="text-sm">Услуг пока нет</p>
+            <Button size="sm" className="mt-3" onClick={openCreate}><Plus className="h-3.5 w-3.5 mr-1" /> Создать первую</Button>
           </div>
         ) : (
           <div className="space-y-4">
-            {/* Мобильная версия: Плитки / Карточки */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:hidden">
+            {/* Мобильная версия: Компактные плитки */}
+            <div className="grid grid-cols-1 gap-2 md:hidden">
               {visible.map((plan) => (
                 <div
                   key={plan.id}
                   className={cn(
-                    "p-3.5 rounded-xl border bg-card shadow-xs flex flex-col justify-between gap-3 transition-all hover:border-slate-300 dark:hover:border-slate-700",
+                    "p-2.5 rounded-lg border bg-card shadow-2xs flex flex-col gap-2 transition-all hover:border-slate-300 dark:hover:border-slate-700",
                     !plan.isActive && "opacity-60 bg-muted/20"
                   )}
                 >
-                  <div className="space-y-2.5">
-                    <div className="flex items-start gap-3">
-                      {plan.imageUrl ? (
-                        <img
-                          src={plan.imageUrl}
-                          alt=""
-                          className="h-16 w-16 object-cover rounded-xl border shrink-0 bg-muted"
-                        />
-                      ) : (
-                        <div className="h-16 w-16 rounded-xl border bg-muted/60 flex items-center justify-center text-muted-foreground shrink-0">
-                          <ImageIcon className="h-7 w-7 opacity-40" />
-                        </div>
-                      )}
+                  <div className="flex items-start gap-2.5">
+                    {plan.imageUrl ? (
+                      <img
+                        src={plan.imageUrl}
+                        alt=""
+                        className="h-11 w-11 object-cover rounded-md border shrink-0 bg-muted"
+                      />
+                    ) : (
+                      <div className="h-11 w-11 rounded-md border bg-muted/60 flex items-center justify-center text-muted-foreground shrink-0">
+                        <ImageIcon className="h-5 w-5 opacity-40" />
+                      </div>
+                    )}
 
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-1">
-                          {plan.category ? (
-                            <Badge variant="secondary" className="text-[10px] font-normal px-2 py-0.5">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-1">
+                        <h3 className="font-bold text-xs sm:text-sm text-foreground truncate">
+                          {plan.name}
+                        </h3>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                            onClick={() => openEdit(plan)}
+                            title="Редактировать"
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                            onClick={() => deletePlan(plan)}
+                            title="Удалить"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-1 mt-0.5">
+                        <div className="font-bold text-xs text-primary">
+                          {plan.isPriceRange && plan.priceTo ? (
+                            <span>{formatMoney(plan.price)} – {formatMoney(plan.priceTo)} ₸</span>
+                          ) : (
+                            <span>{formatMoney(plan.price)} ₸</span>
+                          )}
+                          {plan.isPerPerson && <span className="text-[10px] font-normal text-muted-foreground ml-0.5">/ чел.</span>}
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          {plan.category && (
+                            <Badge variant="secondary" className="text-[9px] font-normal px-1.5 py-0 h-4">
                               {plan.category}
                             </Badge>
-                          ) : <span />}
+                          )}
                           {plan.isActive ? (
-                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 shrink-0">
+                            <span className="text-[9px] font-semibold px-1.5 py-0 rounded-full bg-emerald-100 text-emerald-800">
                               Активна
                             </span>
                           ) : (
-                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 shrink-0">
+                            <span className="text-[9px] font-semibold px-1.5 py-0 rounded-full bg-slate-100 text-slate-600">
                               Архив
                             </span>
                           )}
                         </div>
-
-                        <h3 className="font-bold text-sm text-foreground mt-1 line-clamp-1 leading-snug">
-                          {plan.name}
-                        </h3>
-
-                        {plan.description && (
-                          <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5 leading-relaxed">
-                            {plan.description}
-                          </p>
-                        )}
                       </div>
-                    </div>
-
-                    {/* Инфо-блок: Длительность, Люди, Залы */}
-                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2 flex-wrap text-xs text-muted-foreground">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {plan.durationMin > 0 && (
-                          <span className="inline-flex items-center gap-1 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-[11px] font-medium text-slate-700 dark:text-slate-300">
-                            <Clock className="h-3 w-3" />
-                            {formatDuration(plan.durationMin)}
-                          </span>
-                        )}
-                        <span className="inline-flex items-center gap-1 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-[11px] font-medium text-slate-700 dark:text-slate-300">
-                          <Users className="h-3 w-3" />
-                          {plan.peopleCount ?? 1} чел.
-                        </span>
-                      </div>
-
-                      {plan.halls && plan.halls.length > 0 && (
-                        <div className="flex items-center gap-1 flex-wrap">
-                          {plan.halls.map(h => (
-                            <span
-                              key={h.id}
-                              className="inline-flex items-center gap-1 text-[10px] bg-slate-50 dark:bg-slate-900 border px-1.5 py-0.5 rounded-md font-medium text-slate-600 dark:text-slate-300"
-                            >
-                              <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: h.colorHex || "#3B82F6" }} />
-                              {h.name}
-                            </span>
-                          ))}
-                        </div>
-                      )}
                     </div>
                   </div>
 
-                  {/* Футер карточки: Цена и кнопки действий */}
-                  <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
-                    <div>
-                      <div className="font-bold text-base text-primary">
-                        {plan.isPriceRange && plan.priceTo ? (
-                          <span>{formatMoney(plan.price)} – {formatMoney(plan.priceTo)} ₸</span>
-                        ) : (
-                          <span>{formatMoney(plan.price)} ₸</span>
-                        )}
-                        {plan.isPerPerson && <span className="text-xs font-normal text-muted-foreground ml-1">/ чел.</span>}
-                      </div>
-                      {plan.priceTiers && plan.priceTiers.length > 0 && (
-                        <span className="text-[10px] text-muted-foreground block">
-                          {plan.priceTiers.length} тарифа по кол-ву чел.
+                  {/* Нижняя строчка с доп. информацией */}
+                  <div className="flex items-center justify-between gap-1.5 text-[11px] text-muted-foreground pt-1.5 border-t border-slate-100 dark:border-slate-800/80">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {plan.durationMin > 0 && (
+                        <span className="inline-flex items-center gap-0.5 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-[10px] font-medium text-slate-700 dark:text-slate-300">
+                          <Clock className="h-2.5 w-2.5" />
+                          {formatDuration(plan.durationMin)}
                         </span>
                       )}
+                      <span className="inline-flex items-center gap-0.5 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-[10px] font-medium text-slate-700 dark:text-slate-300">
+                        <Users className="h-2.5 w-2.5" />
+                        {plan.peopleCount ?? 1} чел.
+                      </span>
                     </div>
 
-                    <div className="flex items-center gap-1">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 px-2.5 text-xs font-medium gap-1"
-                        onClick={() => openEdit(plan)}
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                        Изм.
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-red-50 dark:hover:bg-red-950/30"
-                        onClick={() => deletePlan(plan)}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
+                    {plan.halls && plan.halls.length > 0 && (
+                      <div className="flex items-center gap-1 flex-wrap justify-end">
+                        {plan.halls.map(h => (
+                          <span
+                            key={h.id}
+                            className="inline-flex items-center gap-1 text-[9px] bg-slate-50 dark:bg-slate-900 border px-1 py-0.2 rounded font-medium text-slate-600 dark:text-slate-300"
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: h.colorHex || "#3B82F6" }} />
+                            {h.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}

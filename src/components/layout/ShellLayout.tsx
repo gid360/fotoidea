@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { Sidebar } from "./Sidebar";
 import { MobileBottomNav } from "./MobileBottomNav";
 import { Menu, X } from "lucide-react";
@@ -16,6 +17,12 @@ export function ShellLayout({ children }: { children: React.ReactNode }) {
   const isConversationsPage = pathname.startsWith("/conversations");
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const { data: settings = {} } = useQuery<Record<string, string>>({
+    queryKey: ["settings"],
+    queryFn: () => fetch("/api/settings").then((r) => r.json()),
+    staleTime: 1000 * 60 * 5,
+  });
 
   useEffect(() => {
     const saved = localStorage.getItem("sidebar-collapsed");
@@ -35,6 +42,9 @@ export function ShellLayout({ children }: { children: React.ReactNode }) {
   }
 
   if (isAuthPage) return <>{children}</>;
+
+  const logoUrl = settings.logoUrl || "/fotoidea-logo.png";
+  const studioName = settings.studioName || "Fotoidea CRM";
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -77,17 +87,24 @@ export function ShellLayout({ children }: { children: React.ReactNode }) {
       >
         {/* Mobile top bar */}
         <div className="sticky top-0 z-30 flex items-center justify-between h-12 px-3 bg-sidebar border-b border-sidebar-border md:hidden print-hide shrink-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
             <button
               onClick={() => setMobileOpen(true)}
-              className="h-8 w-8 flex items-center justify-center rounded-lg text-sidebar-foreground hover:bg-sidebar-accent/60 transition-colors"
+              className="h-8 w-8 flex items-center justify-center rounded-lg text-sidebar-foreground hover:bg-sidebar-accent/60 transition-colors shrink-0"
               title="Открыть меню"
             >
               <Menu className="h-5 w-5" />
             </button>
-            <span className="text-sm font-semibold text-white tracking-wide">
-              Fotoidea CRM
-            </span>
+            <div className="flex items-center gap-2 min-w-0">
+              <img
+                src={logoUrl}
+                alt="Logo"
+                className="h-6 w-6 object-contain shrink-0"
+              />
+              <span className="text-sm font-semibold text-white tracking-wide truncate">
+                {studioName}
+              </span>
+            </div>
           </div>
         </div>
 

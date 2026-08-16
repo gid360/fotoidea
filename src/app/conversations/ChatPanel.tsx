@@ -1063,64 +1063,6 @@ export function ChatPanel({
           </PopoverContent>
         </Popover>
 
-        {/* Emoji Picker Popover */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9 text-slate-500 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/30 shrink-0 rounded-lg transition-colors"
-              title="Вставить смайлик"
-            >
-              <Smile className="h-4 w-4 text-amber-500" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent
-            align="start"
-            side="top"
-            sideOffset={10}
-            className="w-72 sm:w-80 p-2 text-xs shadow-2xl rounded-2xl border-slate-200 dark:border-slate-800 z-50 bg-background/95 backdrop-blur-md"
-          >
-            {/* Category tabs */}
-            <div className="flex items-center gap-1 border-b pb-1.5 mb-2 px-1">
-              {EMOJI_CATEGORIES.map((cat, idx) => (
-                <button
-                  key={cat.name}
-                  onClick={() => setActiveEmojiCategory(idx)}
-                  className={cn(
-                    "flex-1 py-1 text-sm rounded-lg transition-all text-center flex items-center justify-center",
-                    activeEmojiCategory === idx
-                      ? "bg-slate-100 dark:bg-slate-800 font-bold scale-110 shadow-2xs"
-                      : "hover:bg-slate-50 dark:hover:bg-slate-800/50 opacity-70 hover:opacity-100"
-                  )}
-                  title={cat.name}
-                >
-                  {cat.icon}
-                </button>
-              ))}
-            </div>
-
-            {/* Emoji Grid */}
-            <div className="h-48 overflow-y-auto pr-1 select-none">
-              <div className="text-[11px] font-semibold text-muted-foreground mb-1.5 px-1">
-                {EMOJI_CATEGORIES[activeEmojiCategory].name}
-              </div>
-              <div className="grid grid-cols-8 gap-1">
-                {EMOJI_CATEGORIES[activeEmojiCategory].emojis.map((emoji, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => handleInsertEmoji(emoji)}
-                    className="h-8 w-8 rounded-lg flex items-center justify-center text-lg hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-125 transition-transform"
-                  >
-                    {emoji}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </PopoverContent>
-        </Popover>
-
         {/* Input or Voice Recording Bar */}
         {isRecording ? (
           <div className="flex-1 flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2 animate-pulse">
@@ -1136,20 +1078,83 @@ export function ChatPanel({
           </div>
         ) : (
           <>
-            <Textarea
-              ref={textareaRef}
-              placeholder="Напишите сообщение (Enter — отправить)…"
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-              className="flex-1 min-h-[42px] max-h-32 text-xs resize-none py-2.5 px-3 rounded-xl border-slate-200"
-              rows={1}
-            />
+            <div className="flex-1 relative flex items-center">
+              {/* Emoji Picker Popover Inside Input */}
+              <div className="absolute left-1.5 bottom-1.5 z-10">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-slate-400 hover:text-amber-500 hover:bg-amber-50/80 dark:hover:bg-amber-950/30 rounded-full transition-colors"
+                      title="Вставить смайлик"
+                    >
+                      <Smile className="h-4 w-4 text-amber-500" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    align="start"
+                    side="top"
+                    sideOffset={10}
+                    className="w-72 sm:w-80 p-2 text-xs shadow-2xl rounded-2xl border-slate-200 dark:border-slate-800 z-50 bg-background/95 backdrop-blur-md"
+                  >
+                    {/* Category tabs */}
+                    <div className="flex items-center gap-1 border-b pb-1.5 mb-2 px-1">
+                      {EMOJI_CATEGORIES.map((cat, idx) => (
+                        <button
+                          key={cat.name}
+                          onClick={() => setActiveEmojiCategory(idx)}
+                          className={cn(
+                            "flex-1 py-1 text-sm rounded-lg transition-all text-center flex items-center justify-center",
+                            activeEmojiCategory === idx
+                              ? "bg-slate-100 dark:bg-slate-800 font-bold scale-110 shadow-2xs"
+                              : "hover:bg-slate-50 dark:hover:bg-slate-800/50 opacity-70 hover:opacity-100"
+                          )}
+                          title={cat.name}
+                        >
+                          {cat.icon}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Emoji Grid */}
+                    <div className="h-48 overflow-y-auto pr-1 select-none">
+                      <div className="text-[11px] font-semibold text-muted-foreground mb-1.5 px-1">
+                        {EMOJI_CATEGORIES[activeEmojiCategory].name}
+                      </div>
+                      <div className="grid grid-cols-8 gap-1">
+                        {EMOJI_CATEGORIES[activeEmojiCategory].emojis.map((emoji, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => handleInsertEmoji(emoji)}
+                            className="h-8 w-8 rounded-lg flex items-center justify-center text-lg hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-125 transition-transform"
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <Textarea
+                ref={textareaRef}
+                placeholder="Напишите сообщение (Enter — отправить)…"
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+                className="w-full min-h-[40px] max-h-32 text-xs resize-none py-2.5 pl-9 pr-3 rounded-xl border-slate-200"
+                rows={1}
+              />
+            </div>
 
             <Button
               variant="outline"
