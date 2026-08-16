@@ -26,6 +26,10 @@ const createSchema = z.object({
   peopleCount:   z.preprocess(v => (v === "" || v === null || v === undefined || Number(v) <= 0 ? undefined : Number(v)), z.number().int().positive().optional().nullable()),
   pricePaid:     z.preprocess(v => (v === "" || v === null || v === undefined ? undefined : Number(v)), z.number().nonnegative().optional().nullable()),
   paymentMethod: z.enum(["KASPI", "HALYK", "CASH", "MIXED", "CARD"]).optional().nullable(),
+  splits:        z.array(z.object({
+    paymentMethod: z.enum(["KASPI", "HALYK", "CASH", "CARD"]),
+    amount: z.number().positive(),
+  })).optional(),
 });
 
 export async function GET(req: NextRequest) {
@@ -110,17 +114,36 @@ export async function POST(req: NextRequest) {
           const label = body.type === "NOMINAL"
             ? `Сертификат ${code} (номинал ${body.nominalAmount ?? 0} ₸)`
             : `Сертификат ${code} (пакетный)`;
-          await prisma.cashTransaction.create({
-            data: {
-              shiftId:       openShift.id,
-              type:          "INCOME",
-              category:      "CERTIFICATE_SALE",
-              paymentMethod: body.paymentMethod,
-              amount:        body.pricePaid,
-              description:   label,
-              createdById:   session.user.id,
-            },
-          });
+
+          if (body.splits && body.splits.length > 0) {
+            await Promise.all(
+              body.splits.map(s =>
+                prisma.cashTransaction.create({
+                  data: {
+                    shiftId:       openShift.id,
+                    type:          "INCOME",
+                    category:      "CERTIFICATE_SALE",
+                    paymentMethod: s.paymentMethod,
+                    amount:        s.amount,
+                    description:   `${label} (Смешанная: ${s.paymentMethod} ${s.amount} ₸)`,
+                    createdById:   session.user.id,
+                  },
+                })
+              )
+            );
+          } else {
+            await prisma.cashTransaction.create({
+              data: {
+                shiftId:       openShift.id,
+                type:          "INCOME",
+                category:      "CERTIFICATE_SALE",
+                paymentMethod: body.paymentMethod,
+                amount:        body.pricePaid,
+                description:   label,
+                createdById:   session.user.id,
+              },
+            });
+          }
         }
       } catch (cashErr) {
         console.error("Failed to record cash shift transaction:", cashErr);

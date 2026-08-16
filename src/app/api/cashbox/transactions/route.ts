@@ -15,6 +15,10 @@ const txSchema = z.object({
   amount:        z.number().positive(),
   description:   z.string().optional(),
   clientId:      z.string().optional(),
+  splits:        z.array(z.object({
+    paymentMethod: z.enum(["KASPI", "HALYK", "CASH", "CARD", "DEPOSIT"]),
+    amount: z.number().positive(),
+  })).optional(),
 });
 
 export async function GET(req: NextRequest) {
@@ -66,6 +70,29 @@ export async function POST(req: NextRequest) {
       });
     }
     shiftId = openShift.id;
+  }
+
+  if (body.splits && body.splits.length > 0) {
+    const createdTxs = await prisma.$transaction(
+      body.splits.map((s) =>
+        prisma.cashTransaction.create({
+          data: {
+            shiftId: shiftId!,
+            type: body.type,
+            category: body.category,
+            paymentMethod: s.paymentMethod,
+            amount: s.amount,
+            description: body.description
+              ? `${body.description} (Смешанная: ${s.paymentMethod} ${s.amount} ₸)`
+              : `Смешанная оплата (${s.paymentMethod} ${s.amount} ₸)`,
+            clientId: body.clientId,
+            createdById: session.user.id,
+          },
+          include: { createdBy: { select: { firstName: true, lastName: true } } },
+        })
+      )
+    );
+    return NextResponse.json(createdTxs[0], { status: 201 });
   }
 
   const tx = await prisma.cashTransaction.create({

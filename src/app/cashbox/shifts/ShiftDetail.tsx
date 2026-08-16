@@ -68,6 +68,9 @@ export function ShiftDetail({ shift, onBack }: { shift: Shift; onBack: () => voi
     category:      "OTHER_INCOME",
     paymentMethod: "KASPI" as string,
     amount:        "",
+    cashAmount:    "",
+    nonCashAmount: "",
+    nonCashMethod: "KASPI" as "KASPI" | "HALYK",
     description:   "",
   });
 
@@ -88,12 +91,77 @@ export function ShiftDetail({ shift, onBack }: { shift: Shift; onBack: () => voi
     }));
   }
 
+  function handleSelectPaymentMethod(method: string) {
+    setForm(f => {
+      const updated = { ...f, paymentMethod: method };
+      if (method === "MIXED") {
+        const total = Number(f.amount) || 0;
+        if (total > 0) {
+          const half = Math.round(total / 2);
+          updated.cashAmount = String(half);
+          updated.nonCashAmount = String(total - half);
+        }
+      }
+      return updated;
+    });
+  }
+
+  function handleCashChange(val: string) {
+    setForm(f => {
+      const cash = Number(val) || 0;
+      const total = Number(f.amount) || 0;
+      const nonCash = total >= cash ? String(total - cash) : f.nonCashAmount;
+      return { ...f, cashAmount: val, nonCashAmount: nonCash };
+    });
+  }
+
+  function handleNonCashChange(val: string) {
+    setForm(f => {
+      const nonCash = Number(val) || 0;
+      const total = Number(f.amount) || 0;
+      const cash = total >= nonCash ? String(total - nonCash) : f.cashAmount;
+      return { ...f, nonCashAmount: val, cashAmount: cash };
+    });
+  }
+
   async function addTx() {
+    const total = Number(form.amount);
+    if (!total || total <= 0) return;
+
+    if (form.paymentMethod === "MIXED") {
+      const cash = Number(form.cashAmount) || 0;
+      const nonCash = Number(form.nonCashAmount) || 0;
+      if (cash <= 0 || nonCash <= 0) {
+        toast({ title: "Укажите суммы для наличных и безналичных", variant: "destructive" });
+        return;
+      }
+      if (cash + nonCash !== total) {
+        toast({ title: `Сумма частей (${cash + nonCash} ₸) не совпадает с общей (${total} ₸)`, variant: "destructive" });
+        return;
+      }
+    }
+
     setSaving(true);
+    const payload: any = {
+      shiftId: shift.id,
+      type: form.type,
+      category: form.category,
+      paymentMethod: form.paymentMethod,
+      amount: total,
+      description: form.description,
+    };
+
+    if (form.paymentMethod === "MIXED") {
+      payload.splits = [
+        { paymentMethod: "CASH", amount: Number(form.cashAmount) },
+        { paymentMethod: form.nonCashMethod, amount: Number(form.nonCashAmount) },
+      ];
+    }
+
     const res = await fetch("/api/cashbox/transactions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, shiftId: shift.id, amount: Number(form.amount) }),
+      body: JSON.stringify(payload),
     });
     setSaving(false);
     if (!res.ok) { toast({ title: "Ошибка", variant: "destructive" }); return; }
@@ -229,13 +297,26 @@ export function ShiftDetail({ shift, onBack }: { shift: Shift; onBack: () => voi
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Сумма (₸)</Label>
+                <Label>Общая сумма (₸)</Label>
                 <Input className="mt-1" type="number" min="0.01" step="any"
-                  value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
+                  value={form.amount} onChange={e => {
+                    const val = e.target.value;
+                    setForm(f => {
+                      const updated = { ...f, amount: val };
+                      if (f.paymentMethod === "MIXED") {
+                        const total = Number(val) || 0;
+                        const cash = Number(f.cashAmount) || 0;
+                        if (total >= cash) {
+                          updated.nonCashAmount = String(total - cash);
+                        }
+                      }
+                      return updated;
+                    });
+                  }} />
               </div>
               <div>
                 <Label>Способ оплаты</Label>
-                <Select value={form.paymentMethod} onValueChange={v => setForm(f => ({ ...f, paymentMethod: v }))}>
+                <Select value={form.paymentMethod} onValueChange={handleSelectPaymentMethod}>
                   <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="KASPI">Kaspi</SelectItem>
@@ -248,6 +329,73 @@ export function ShiftDetail({ shift, onBack }: { shift: Shift; onBack: () => voi
                 </Select>
               </div>
             </div>
+
+            {form.paymentMethod === "MIXED" && (
+              <div className="p-3 rounded-lg border border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 space-y-3">
+                <div className="flex items-center justify-between text-xs font-semibold text-amber-900 dark:text-amber-300">
+                  <span>Разделение оплаты:</span>
+                  <span className="font-mono">
+                    Всего: {Number(form.amount) || 0} ₸
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <Label className="text-xs font-semibold text-slate-700">Наличные (₸)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="any"
+                      placeholder="0"
+                      value={form.cashAmount}
+                      onChange={e => handleCashChange(e.target.value)}
+                      className="mt-1 bg-white dark:bg-slate-900 text-xs font-bold"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-semibold text-slate-700">Безналичные (₸)</Label>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setForm(f => ({ ...f, nonCashMethod: "KASPI" }))}
+                          className={cn(
+                            "text-[10px] px-1.5 py-0.5 rounded font-bold transition-all",
+                            form.nonCashMethod === "KASPI"
+                              ? "bg-red-500 text-white"
+                              : "text-slate-500 hover:bg-slate-200"
+                          )}
+                        >
+                          Kaspi
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setForm(f => ({ ...f, nonCashMethod: "HALYK" }))}
+                          className={cn(
+                            "text-[10px] px-1.5 py-0.5 rounded font-bold transition-all",
+                            form.nonCashMethod === "HALYK"
+                              ? "bg-emerald-600 text-white"
+                              : "text-slate-500 hover:bg-slate-200"
+                          )}
+                        >
+                          Halyk
+                        </button>
+                      </div>
+                    </div>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="any"
+                      placeholder="0"
+                      value={form.nonCashAmount}
+                      onChange={e => handleNonCashChange(e.target.value)}
+                      className="mt-1 bg-white dark:bg-slate-900 text-xs font-bold"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div>
               <Label>Описание</Label>

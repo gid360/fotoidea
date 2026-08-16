@@ -64,6 +64,9 @@ export function TransactionsClient() {
   const [txCategory, setTxCategory] = useState<string>("OTHER_INCOME");
   const [txPaymentMethod, setTxPaymentMethod] = useState<string>("KASPI");
   const [txAmount, setTxAmount] = useState<string>("");
+  const [txCashAmount, setTxCashAmount] = useState<string>("");
+  const [txNonCashAmount, setTxNonCashAmount] = useState<string>("");
+  const [txNonCashMethod, setTxNonCashMethod] = useState<"KASPI" | "HALYK">("KASPI");
   const [txDescription, setTxDescription] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -81,25 +84,86 @@ export function TransactionsClient() {
     setTxCategory(type === "INCOME" ? "OTHER_INCOME" : "TRAINER_SALARY");
     setTxPaymentMethod("CASH");
     setTxAmount("");
+    setTxCashAmount("");
+    setTxNonCashAmount("");
+    setTxNonCashMethod("KASPI");
     setTxDescription("");
     setTxDialogOpen(true);
   }
 
+  function handleSelectPaymentMethod(method: string) {
+    setTxPaymentMethod(method);
+    if (method === "MIXED") {
+      const total = Number(txAmount) || 0;
+      if (total > 0) {
+        const half = Math.round(total / 2);
+        setTxCashAmount(String(half));
+        setTxNonCashAmount(String(total - half));
+      }
+    }
+  }
+
+  function handleCashChange(val: string) {
+    setTxCashAmount(val);
+    const cash = Number(val) || 0;
+    const total = Number(txAmount) || 0;
+    if (total > 0 && cash <= total) {
+      setTxNonCashAmount(String(total - cash));
+    } else if (cash > total) {
+      setTxAmount(String(cash + (Number(txNonCashAmount) || 0)));
+    }
+  }
+
+  function handleNonCashChange(val: string) {
+    setTxNonCashAmount(val);
+    const nonCash = Number(val) || 0;
+    const total = Number(txAmount) || 0;
+    if (total > 0 && nonCash <= total) {
+      setTxCashAmount(String(total - nonCash));
+    } else if (nonCash > total) {
+      setTxAmount(String(nonCash + (Number(txCashAmount) || 0)));
+    }
+  }
+
   async function handleCreateTx(e: React.FormEvent) {
     e.preventDefault();
-    if (!txAmount || Number(txAmount) <= 0) return;
+    const total = Number(txAmount);
+    if (!total || total <= 0) return;
+
+    if (txPaymentMethod === "MIXED") {
+      const cash = Number(txCashAmount) || 0;
+      const nonCash = Number(txNonCashAmount) || 0;
+      if (cash <= 0 || nonCash <= 0) {
+        toast({ title: "Укажите суммы для наличных и безналичных", variant: "destructive" });
+        return;
+      }
+      if (cash + nonCash !== total) {
+        toast({ title: `Сумма частей (${cash + nonCash} ₸) не совпадает с общей суммой (${total} ₸)`, variant: "destructive" });
+        return;
+      }
+    }
+
     setSubmitting(true);
     try {
+      const payload: any = {
+        type: txType,
+        category: txCategory,
+        paymentMethod: txPaymentMethod,
+        amount: total,
+        description: txDescription,
+      };
+
+      if (txPaymentMethod === "MIXED") {
+        payload.splits = [
+          { paymentMethod: "CASH", amount: Number(txCashAmount) },
+          { paymentMethod: txNonCashMethod, amount: Number(txNonCashAmount) },
+        ];
+      }
+
       const res = await fetch("/api/cashbox/transactions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: txType,
-          category: txCategory,
-          paymentMethod: txPaymentMethod,
-          amount: Number(txAmount),
-          description: txDescription,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (res.ok) {
@@ -323,7 +387,7 @@ export function TransactionsClient() {
                     type="button"
                     variant={txPaymentMethod === pm.id ? "default" : "outline"}
                     size="sm"
-                    onClick={() => setTxPaymentMethod(pm.id)}
+                    onClick={() => handleSelectPaymentMethod(pm.id)}
                     className="text-xs px-2 h-8"
                   >
                     {pm.label}
@@ -333,18 +397,95 @@ export function TransactionsClient() {
             </div>
 
             <div>
-              <Label className="text-xs">Сумма (₸) *</Label>
+              <Label className="text-xs">Общая сумма (₸) *</Label>
               <Input
                 type="number"
                 min="0.01"
                 step="any"
                 placeholder="5000"
                 value={txAmount}
-                onChange={e => setTxAmount(e.target.value)}
+                onChange={e => {
+                  const val = e.target.value;
+                  setTxAmount(val);
+                  if (txPaymentMethod === "MIXED") {
+                    const total = Number(val) || 0;
+                    const cash = Number(txCashAmount) || 0;
+                    if (total >= cash) {
+                      setTxNonCashAmount(String(total - cash));
+                    }
+                  }
+                }}
                 required
                 className="mt-1 font-bold text-sm"
               />
             </div>
+
+            {txPaymentMethod === "MIXED" && (
+              <div className="p-3 rounded-lg border border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 space-y-3">
+                <div className="flex items-center justify-between text-xs font-semibold text-amber-900 dark:text-amber-300">
+                  <span>Разделение оплаты:</span>
+                  <span className="font-mono">
+                    Всего: {Number(txAmount) || 0} ₸
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <Label className="text-xs font-semibold text-slate-700">Наличные (₸)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="any"
+                      placeholder="0"
+                      value={txCashAmount}
+                      onChange={e => handleCashChange(e.target.value)}
+                      className="mt-1 bg-white dark:bg-slate-900 text-xs font-bold"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-semibold text-slate-700">Безналичные (₸)</Label>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setTxNonCashMethod("KASPI")}
+                          className={cn(
+                            "text-[10px] px-1.5 py-0.5 rounded font-bold transition-all",
+                            txNonCashMethod === "KASPI"
+                              ? "bg-red-500 text-white"
+                              : "text-slate-500 hover:bg-slate-200"
+                          )}
+                        >
+                          Kaspi
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setTxNonCashMethod("HALYK")}
+                          className={cn(
+                            "text-[10px] px-1.5 py-0.5 rounded font-bold transition-all",
+                            txNonCashMethod === "HALYK"
+                              ? "bg-emerald-600 text-white"
+                              : "text-slate-500 hover:bg-slate-200"
+                          )}
+                        >
+                          Halyk
+                        </button>
+                      </div>
+                    </div>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="any"
+                      placeholder="0"
+                      value={txNonCashAmount}
+                      onChange={e => handleNonCashChange(e.target.value)}
+                      className="mt-1 bg-white dark:bg-slate-900 text-xs font-bold"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div>
               <Label className="text-xs">Комментарий / Кому выдано (необязательно)</Label>

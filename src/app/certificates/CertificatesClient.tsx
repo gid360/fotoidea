@@ -74,6 +74,9 @@ export function CertificatesClient() {
     peopleCount: "1",
     pricePaid: "",
     paymentMethod: "KASPI" as string,
+    cashAmount: "",
+    nonCashAmount: "",
+    nonCashMethod: "KASPI" as "KASPI" | "HALYK",
   });
 
   const [categoryFilter, setCategoryFilter] = useState("");
@@ -136,10 +139,46 @@ export function CertificatesClient() {
       peopleCount: autoPeople,
       pricePaid: autoPrice,
       paymentMethod: "CASH",
+      cashAmount: "",
+      nonCashAmount: "",
+      nonCashMethod: "KASPI",
     });
     setPlanSearch("");
     setShowBuyerDropdown(false);
     setCreateOpen(true);
+  }
+
+  function handleSelectCertPayment(method: string) {
+    setForm(f => {
+      const updated = { ...f, paymentMethod: method };
+      if (method === "MIXED") {
+        const total = Number(f.pricePaid) || 0;
+        if (total > 0) {
+          const half = Math.round(total / 2);
+          updated.cashAmount = String(half);
+          updated.nonCashAmount = String(total - half);
+        }
+      }
+      return updated;
+    });
+  }
+
+  function handleCertCashChange(val: string) {
+    setForm(f => {
+      const cash = Number(val) || 0;
+      const total = Number(f.pricePaid) || 0;
+      const nonCash = total >= cash ? String(total - cash) : f.nonCashAmount;
+      return { ...f, cashAmount: val, nonCashAmount: nonCash };
+    });
+  }
+
+  function handleCertNonCashChange(val: string) {
+    setForm(f => {
+      const nonCash = Number(val) || 0;
+      const total = Number(f.pricePaid) || 0;
+      const cash = total >= nonCash ? String(total - nonCash) : f.cashAmount;
+      return { ...f, nonCashAmount: val, cashAmount: cash };
+    });
   }
 
   async function create() {
@@ -154,21 +193,45 @@ export function CertificatesClient() {
       const cleanDays = form.validDays ? Number(form.validDays) : 90;
       const cleanPeople = form.peopleCount && Number(form.peopleCount) > 0 ? Number(form.peopleCount) : null;
 
+      if (cleanPrice && cleanPrice > 0 && form.paymentMethod === "MIXED") {
+        const cash = Number(form.cashAmount) || 0;
+        const nonCash = Number(form.nonCashAmount) || 0;
+        if (cash <= 0 || nonCash <= 0) {
+          toast({ title: "Укажите суммы для наличных и безналичных", variant: "destructive" });
+          setSaving(false);
+          return;
+        }
+        if (cash + nonCash !== cleanPrice) {
+          toast({ title: `Сумма частей (${cash + nonCash} ₸) не совпадает с общей суммой (${cleanPrice} ₸)`, variant: "destructive" });
+          setSaving(false);
+          return;
+        }
+      }
+
+      const payload: any = {
+        type: form.type,
+        nominalAmount: form.type === "NOMINAL" ? cleanNominal : null,
+        planId: form.type === "PACKAGE" && form.planId ? form.planId : null,
+        buyerName: form.buyerName?.trim() || null,
+        buyerPhone: form.buyerPhone?.trim() || null,
+        recipientText: form.recipientText?.trim() || null,
+        validDays: cleanDays,
+        peopleCount: cleanPeople,
+        pricePaid: cleanPrice,
+        paymentMethod: cleanPrice && cleanPrice > 0 ? form.paymentMethod : null,
+      };
+
+      if (cleanPrice && cleanPrice > 0 && form.paymentMethod === "MIXED") {
+        payload.splits = [
+          { paymentMethod: "CASH", amount: Number(form.cashAmount) },
+          { paymentMethod: form.nonCashMethod, amount: Number(form.nonCashAmount) },
+        ];
+      }
+
       const res = await fetch("/api/certificates", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: form.type,
-          nominalAmount: form.type === "NOMINAL" ? cleanNominal : null,
-          planId: form.type === "PACKAGE" && form.planId ? form.planId : null,
-          buyerName: form.buyerName?.trim() || null,
-          buyerPhone: form.buyerPhone?.trim() || null,
-          recipientText: form.recipientText?.trim() || null,
-          validDays: cleanDays,
-          peopleCount: cleanPeople,
-          pricePaid: cleanPrice,
-          paymentMethod: cleanPrice && cleanPrice > 0 ? form.paymentMethod : null,
-        }),
+        body: JSON.stringify(payload),
       });
       setSaving(false);
       if (!res.ok) {
@@ -552,29 +615,111 @@ export function CertificatesClient() {
               <Label>Сумма продажи (₸) - для записи в кассу</Label>
               <Input className="mt-1" type="number" min="0" step="any" placeholder="0 - не записывать"
                 value={form.pricePaid}
-                onChange={e => setForm(f => ({ ...f, pricePaid: e.target.value }))} />
+                onChange={e => {
+                  const val = e.target.value;
+                  setForm(f => {
+                    const updated = { ...f, pricePaid: val };
+                    if (f.paymentMethod === "MIXED") {
+                      const total = Number(val) || 0;
+                      const cash = Number(f.cashAmount) || 0;
+                      if (total >= cash) {
+                        updated.nonCashAmount = String(total - cash);
+                      }
+                    }
+                    return updated;
+                  });
+                }} />
             </div>
 
             {form.pricePaid && Number(form.pricePaid) > 0 && (
-              <div>
-                <Label>Способ оплаты</Label>
-                <div className="mt-1 grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                  {[
-                    { id: "KASPI", label: "Kaspi" },
-                    { id: "HALYK", label: "Halyk" },
-                    { id: "CASH",  label: "Наличные" },
-                    { id: "MIXED", label: "Смешанная" },
-                  ].map(m => (
-                    <button key={m.id} type="button"
-                      onClick={() => setForm(f => ({ ...f, paymentMethod: m.id }))}
-                      className={cn(
-                        "border rounded-lg px-2.5 py-1.5 text-xs transition-colors font-medium text-center",
-                        form.paymentMethod === m.id ? "border-primary bg-primary text-primary-foreground font-semibold shadow-2xs" : "hover:bg-muted/50 border-slate-200 dark:border-slate-800"
-                      )}>
-                      {m.label}
-                    </button>
-                  ))}
+              <div className="space-y-3">
+                <div>
+                  <Label>Способ оплаты</Label>
+                  <div className="mt-1 grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                    {[
+                      { id: "KASPI", label: "Kaspi" },
+                      { id: "HALYK", label: "Halyk" },
+                      { id: "CASH",  label: "Наличные" },
+                      { id: "MIXED", label: "Смешанная" },
+                    ].map(m => (
+                      <button key={m.id} type="button"
+                        onClick={() => handleSelectCertPayment(m.id)}
+                        className={cn(
+                          "border rounded-lg px-2.5 py-1.5 text-xs transition-colors font-medium text-center",
+                          form.paymentMethod === m.id ? "border-primary bg-primary text-primary-foreground font-semibold shadow-2xs" : "hover:bg-muted/50 border-slate-200 dark:border-slate-800"
+                        )}>
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
+
+                {form.paymentMethod === "MIXED" && (
+                  <div className="p-3 rounded-lg border border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 space-y-3">
+                    <div className="flex items-center justify-between text-xs font-semibold text-amber-900 dark:text-amber-300">
+                      <span>Разделение оплаты:</span>
+                      <span className="font-mono">
+                        Всего: {Number(form.pricePaid) || 0} ₸
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <div>
+                        <Label className="text-xs font-semibold text-slate-700">Наличные (₸)</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="any"
+                          placeholder="0"
+                          value={form.cashAmount}
+                          onChange={e => handleCertCashChange(e.target.value)}
+                          className="mt-1 bg-white dark:bg-slate-900 text-xs font-bold"
+                        />
+                      </div>
+
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs font-semibold text-slate-700">Безналичные (₸)</Label>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => setForm(f => ({ ...f, nonCashMethod: "KASPI" }))}
+                              className={cn(
+                                "text-[10px] px-1.5 py-0.5 rounded font-bold transition-all",
+                                form.nonCashMethod === "KASPI"
+                                  ? "bg-red-500 text-white"
+                                  : "text-slate-500 hover:bg-slate-200"
+                              )}
+                            >
+                              Kaspi
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setForm(f => ({ ...f, nonCashMethod: "HALYK" }))}
+                              className={cn(
+                                "text-[10px] px-1.5 py-0.5 rounded font-bold transition-all",
+                                form.nonCashMethod === "HALYK"
+                                  ? "bg-emerald-600 text-white"
+                                  : "text-slate-500 hover:bg-slate-200"
+                              )}
+                            >
+                              Halyk
+                            </button>
+                          </div>
+                        </div>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="any"
+                          placeholder="0"
+                          value={form.nonCashAmount}
+                          onChange={e => handleCertNonCashChange(e.target.value)}
+                          className="mt-1 bg-white dark:bg-slate-900 text-xs font-bold"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
