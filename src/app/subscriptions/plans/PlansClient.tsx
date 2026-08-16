@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, Check, Camera, Upload, ImageIcon, GripVertical, Search, Users, Layers } from "lucide-react";
+import { Plus, Pencil, Trash2, Check, Camera, Upload, ImageIcon, GripVertical, Search, Users, Layers, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -315,124 +315,254 @@ export function PlansClient() {
             <Button className="mt-4" onClick={openCreate}><Plus className="h-4 w-4 mr-1.5" /> Создать первую</Button>
           </div>
         ) : (
-          <div className="border rounded-xl overflow-hidden bg-card shadow-sm">
-            <table className="w-full text-sm text-left">
-              <thead className="bg-muted/50 border-b text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                <tr>
-                  <th className="px-3 py-3 w-10 text-center"></th>
-                  <th className="px-4 py-3 w-16">Фото</th>
-                  <th className="px-4 py-3">Название и описание</th>
-                  <th className="px-4 py-3">Категория</th>
-                  <th className="px-4 py-3">Доступные залы</th>
-                  <th className="px-4 py-3">Длительность</th>
-                  <th className="px-4 py-3">Кол-во чел.</th>
-                  <th className="px-4 py-3">Цена</th>
-                  <th className="px-4 py-3">Статус</th>
-                  <th className="px-4 py-3 text-right">Действия</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {visible.map((plan, index) => (
-                  <tr
-                    key={plan.id}
-                    draggable={true}
-                    onDragStart={() => handleDragStart(index)}
-                    onDragOver={handleDragOver}
-                    onDrop={() => handleDrop(index)}
-                    className={cn(
-                      "hover:bg-muted/40 transition-colors select-none",
-                      !plan.isActive && "opacity-60 bg-muted/20",
-                      draggedIndex === index && "opacity-30 bg-muted/50 border-dashed border-2 border-primary"
-                    )}
-                  >
-                    <td className="px-3 py-3 text-center cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground">
-                      <GripVertical className="h-4 w-4 mx-auto" />
-                    </td>
-                    <td className="px-4 py-3">
+          <div className="space-y-4">
+            {/* Мобильная версия: Плитки / Карточки */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:hidden">
+              {visible.map((plan) => (
+                <div
+                  key={plan.id}
+                  className={cn(
+                    "p-3.5 rounded-xl border bg-card shadow-xs flex flex-col justify-between gap-3 transition-all hover:border-slate-300 dark:hover:border-slate-700",
+                    !plan.isActive && "opacity-60 bg-muted/20"
+                  )}
+                >
+                  <div className="space-y-2.5">
+                    <div className="flex items-start gap-3">
                       {plan.imageUrl ? (
-                        <img src={plan.imageUrl} alt="" className="h-10 w-10 object-cover rounded-lg border" />
+                        <img
+                          src={plan.imageUrl}
+                          alt=""
+                          className="h-16 w-16 object-cover rounded-xl border shrink-0 bg-muted"
+                        />
                       ) : (
-                        <div className="h-10 w-10 rounded-lg border bg-muted/50 flex items-center justify-center text-muted-foreground">
-                          <ImageIcon className="h-5 w-5 opacity-40" />
+                        <div className="h-16 w-16 rounded-xl border bg-muted/60 flex items-center justify-center text-muted-foreground shrink-0">
+                          <ImageIcon className="h-7 w-7 opacity-40" />
                         </div>
                       )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <p className="font-semibold text-foreground">{plan.name}</p>
-                      {plan.description && (
-                        <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{plan.description}</p>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {plan.category ? (
-                        <Badge variant="secondary" className="text-xs font-normal">
-                          {plan.category}
-                        </Badge>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 font-medium">
-                      {plan.halls && plan.halls.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {plan.halls.map(h => (
-                            <Badge key={h.id} variant="secondary" className="text-[11px] font-normal">
-                              <span className="w-2 h-2 rounded-full mr-1 shrink-0" style={{ background: h.colorHex || "#3B82F6" }} />
-                              {h.name}
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-1">
+                          {plan.category ? (
+                            <Badge variant="secondary" className="text-[10px] font-normal px-2 py-0.5">
+                              {plan.category}
                             </Badge>
+                          ) : <span />}
+                          {plan.isActive ? (
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 shrink-0">
+                              Активна
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 shrink-0">
+                              Архив
+                            </span>
+                          )}
+                        </div>
+
+                        <h3 className="font-bold text-sm text-foreground mt-1 line-clamp-1 leading-snug">
+                          {plan.name}
+                        </h3>
+
+                        {plan.description && (
+                          <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5 leading-relaxed">
+                            {plan.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Инфо-блок: Длительность, Люди, Залы */}
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2 flex-wrap text-xs text-muted-foreground">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {plan.durationMin > 0 && (
+                          <span className="inline-flex items-center gap-1 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-[11px] font-medium text-slate-700 dark:text-slate-300">
+                            <Clock className="h-3 w-3" />
+                            {formatDuration(plan.durationMin)}
+                          </span>
+                        )}
+                        <span className="inline-flex items-center gap-1 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-[11px] font-medium text-slate-700 dark:text-slate-300">
+                          <Users className="h-3 w-3" />
+                          {plan.peopleCount ?? 1} чел.
+                        </span>
+                      </div>
+
+                      {plan.halls && plan.halls.length > 0 && (
+                        <div className="flex items-center gap-1 flex-wrap">
+                          {plan.halls.map(h => (
+                            <span
+                              key={h.id}
+                              className="inline-flex items-center gap-1 text-[10px] bg-slate-50 dark:bg-slate-900 border px-1.5 py-0.5 rounded-md font-medium text-slate-600 dark:text-slate-300"
+                            >
+                              <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: h.colorHex || "#3B82F6" }} />
+                              {h.name}
+                            </span>
                           ))}
                         </div>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
                       )}
-                    </td>
-                    <td className="px-4 py-3 font-medium whitespace-nowrap">
-                      {plan.durationMin > 0 ? (
-                        formatDuration(plan.durationMin)
-                      ) : (
-                        <span className="text-muted-foreground font-normal">Не показывать</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 font-medium whitespace-nowrap">
-                      <span className="inline-flex items-center gap-1 bg-muted/50 px-2 py-0.5 rounded text-xs">
-                        <Users className="h-3 w-3 text-muted-foreground" />
-                        {plan.peopleCount ?? 1} чел.
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 font-bold text-primary whitespace-nowrap">
-                      {plan.isPriceRange && plan.priceTo ? (
-                        <span>{formatMoney(plan.price)} – {formatMoney(plan.priceTo)} ₸</span>
-                      ) : (
-                        <span>{formatMoney(plan.price)} ₸</span>
-                      )}
-                      {plan.isPerPerson && <span className="text-xs font-normal text-muted-foreground ml-1">/ чел.</span>}
+                    </div>
+                  </div>
+
+                  {/* Футер карточки: Цена и кнопки действий */}
+                  <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+                    <div>
+                      <div className="font-bold text-base text-primary">
+                        {plan.isPriceRange && plan.priceTo ? (
+                          <span>{formatMoney(plan.price)} – {formatMoney(plan.priceTo)} ₸</span>
+                        ) : (
+                          <span>{formatMoney(plan.price)} ₸</span>
+                        )}
+                        {plan.isPerPerson && <span className="text-xs font-normal text-muted-foreground ml-1">/ чел.</span>}
+                      </div>
                       {plan.priceTiers && plan.priceTiers.length > 0 && (
-                        <span className="block text-[10px] text-muted-foreground font-normal">
-                          ({plan.priceTiers.length} тарифа по чел.)
+                        <span className="text-[10px] text-muted-foreground block">
+                          {plan.priceTiers.length} тарифа по кол-ву чел.
                         </span>
                       )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {plan.isActive ? (
-                        <span className="text-xs font-medium px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800">Активна</span>
-                      ) : (
-                        <span className="text-xs font-medium px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600">Архив</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right whitespace-nowrap">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => openEdit(plan)}>
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-red-50" onClick={() => deletePlan(plan)}>
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </td>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 px-2.5 text-xs font-medium gap-1"
+                        onClick={() => openEdit(plan)}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                        Изм.
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-red-50 dark:hover:bg-red-950/30"
+                        onClick={() => deletePlan(plan)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Десктопная версия: Таблица с Drag-and-Drop */}
+            <div className="hidden md:block border rounded-xl overflow-hidden bg-card shadow-sm">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-muted/50 border-b text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  <tr>
+                    <th className="px-3 py-3 w-10 text-center"></th>
+                    <th className="px-4 py-3 w-16">Фото</th>
+                    <th className="px-4 py-3">Название и описание</th>
+                    <th className="px-4 py-3">Категория</th>
+                    <th className="px-4 py-3">Доступные залы</th>
+                    <th className="px-4 py-3">Длительность</th>
+                    <th className="px-4 py-3">Кол-во чел.</th>
+                    <th className="px-4 py-3">Цена</th>
+                    <th className="px-4 py-3">Статус</th>
+                    <th className="px-4 py-3 text-right">Действия</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y">
+                  {visible.map((plan, index) => (
+                    <tr
+                      key={plan.id}
+                      draggable={true}
+                      onDragStart={() => handleDragStart(index)}
+                      onDragOver={handleDragOver}
+                      onDrop={() => handleDrop(index)}
+                      className={cn(
+                        "hover:bg-muted/40 transition-colors select-none",
+                        !plan.isActive && "opacity-60 bg-muted/20",
+                        draggedIndex === index && "opacity-30 bg-muted/50 border-dashed border-2 border-primary"
+                      )}
+                    >
+                      <td className="px-3 py-3 text-center cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground">
+                        <GripVertical className="h-4 w-4 mx-auto" />
+                      </td>
+                      <td className="px-4 py-3">
+                        {plan.imageUrl ? (
+                          <img src={plan.imageUrl} alt="" className="h-10 w-10 object-cover rounded-lg border" />
+                        ) : (
+                          <div className="h-10 w-10 rounded-lg border bg-muted/50 flex items-center justify-center text-muted-foreground">
+                            <ImageIcon className="h-5 w-5 opacity-40" />
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="font-semibold text-foreground">{plan.name}</p>
+                        {plan.description && (
+                          <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{plan.description}</p>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {plan.category ? (
+                          <Badge variant="secondary" className="text-xs font-normal">
+                            {plan.category}
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 font-medium">
+                        {plan.halls && plan.halls.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {plan.halls.map(h => (
+                              <Badge key={h.id} variant="secondary" className="text-[11px] font-normal">
+                                <span className="w-2 h-2 rounded-full mr-1 shrink-0" style={{ background: h.colorHex || "#3B82F6" }} />
+                                {h.name}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 font-medium whitespace-nowrap">
+                        {plan.durationMin > 0 ? (
+                          formatDuration(plan.durationMin)
+                        ) : (
+                          <span className="text-muted-foreground font-normal">Не показывать</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 font-medium whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1 bg-muted/50 px-2 py-0.5 rounded text-xs">
+                          <Users className="h-3 w-3 text-muted-foreground" />
+                          {plan.peopleCount ?? 1} чел.
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 font-bold text-primary whitespace-nowrap">
+                        {plan.isPriceRange && plan.priceTo ? (
+                          <span>{formatMoney(plan.price)} – {formatMoney(plan.priceTo)} ₸</span>
+                        ) : (
+                          <span>{formatMoney(plan.price)} ₸</span>
+                        )}
+                        {plan.isPerPerson && <span className="text-xs font-normal text-muted-foreground ml-1">/ чел.</span>}
+                        {plan.priceTiers && plan.priceTiers.length > 0 && (
+                          <span className="block text-[10px] text-muted-foreground font-normal">
+                            ({plan.priceTiers.length} тарифа по чел.)
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {plan.isActive ? (
+                          <span className="text-xs font-medium px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800">Активна</span>
+                        ) : (
+                          <span className="text-xs font-medium px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600">Архив</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => openEdit(plan)}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-red-50" onClick={() => deletePlan(plan)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>
