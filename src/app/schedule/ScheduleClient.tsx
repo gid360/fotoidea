@@ -247,6 +247,9 @@ function MiniCalendar({ selected, onChange }: { selected: Date; onChange: (d: Da
 export function ScheduleClient({ initialHalls }: { initialHalls: Hall[] }) {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [compact, setCompact] = useState(false);
+  const [initialClientId, setInitialClientId] = useState<string | undefined>();
+  const [initialName, setInitialName] = useState<string | undefined>();
+  const [initialPhone, setInitialPhone] = useState<string | undefined>();
 
   useEffect(() => {
     try {
@@ -263,6 +266,13 @@ export function ScheduleClient({ initialHalls }: { initialHalls: Hall[] }) {
         const params = new URLSearchParams(window.location.search);
         const dateParam = params.get("date");
         const eventIdParam = params.get("eventId") || params.get("bookingId");
+        const isNew = params.get("new") === "1" || params.get("create") === "1";
+        const cId = params.get("clientId");
+        const phone = params.get("phone");
+        const name = params.get("name");
+        const time = params.get("time");
+        const hallId = params.get("hallId");
+
         if (dateParam) {
           const parts = dateParam.split("-");
           if (parts.length === 3) {
@@ -272,6 +282,13 @@ export function ScheduleClient({ initialHalls }: { initialHalls: Hall[] }) {
         }
         if (eventIdParam) {
           setDetailEventId(eventIdParam);
+        } else if (isNew || cId || phone || name) {
+          if (time) setCreateTime(time);
+          if (hallId) setCreateHallId(hallId);
+          if (cId) setInitialClientId(cId);
+          if (phone) setInitialPhone(phone);
+          if (name) setInitialName(name);
+          setCreateOpen(true);
         }
       } catch {}
     }
@@ -572,11 +589,19 @@ export function ScheduleClient({ initialHalls }: { initialHalls: Hall[] }) {
       {/* Диалоги */}
       <CreateClassDialog
         open={createOpen}
-        onClose={() => setCreateOpen(false)}
+        onClose={() => {
+          setCreateOpen(false);
+          setInitialClientId(undefined);
+          setInitialName(undefined);
+          setInitialPhone(undefined);
+        }}
         onCreated={() => refetch()}
         selectedDate={selectedDate}
         selectedTime={createTime}
         selectedHallId={createHallId}
+        initialClientId={initialClientId}
+        initialName={initialName}
+        initialPhone={initialPhone}
       />
       <ClassDetailDialog
         eventId={detailEventId}

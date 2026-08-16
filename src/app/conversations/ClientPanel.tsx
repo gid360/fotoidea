@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import {
   User, Phone, Mail, Calendar, MessageCircle, Tag, Plus, Edit2, Check, X,
   Clock, Shield, Award, Camera, RefreshCw, AlertCircle, ShoppingBag, FileText, ChevronRight, CheckCircle2, ChevronDown, Trash2, ArrowLeft, ExternalLink,
-  Instagram, Link2, CheckSquare,
+  Instagram, Link2, CheckSquare, CalendarPlus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -396,8 +396,22 @@ export function ClientPanel({
           </div>
         </div>
 
-        {/* Task Button & Modal */}
-        <div className="pt-1">
+        {/* Booking & Task Action Buttons */}
+        <div className="pt-1 space-y-1.5">
+          <Button
+            size="sm"
+            onClick={() => {
+              const url = `/schedule?new=1&clientId=${encodeURIComponent(client.dbClientId || (client.id && !client.id.includes("@") ? client.id : ""))}&phone=${encodeURIComponent(client.phone || "")}&name=${encodeURIComponent(clientDisplayName(client))}`;
+              window.open(url, "_blank");
+            }}
+            className="w-full h-8 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold cursor-pointer shadow-2xs"
+            title="Создать новую запись для этого клиента в расписании"
+          >
+            <CalendarPlus className="h-3.5 w-3.5" />
+            <Plus className="h-3 w-3" />
+            Записать
+          </Button>
+
           <Button
             variant="outline"
             size="sm"

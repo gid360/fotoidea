@@ -54,6 +54,9 @@ interface Props {
   selectedDate: Date;
   selectedTime?: string;
   selectedHallId?: string;
+  initialClientId?: string;
+  initialName?: string;
+  initialPhone?: string;
 }
 
 const TIME_SLOTS = Array.from({ length: 33 }, (_, i) => {
@@ -62,7 +65,17 @@ const TIME_SLOTS = Array.from({ length: 33 }, (_, i) => {
   return `${String(h).padStart(2, "0")}:${m}`;
 });
 
-export function CreateClassDialog({ open, onClose, onCreated, selectedDate, selectedTime, selectedHallId }: Props) {
+export function CreateClassDialog({
+  open,
+  onClose,
+  onCreated,
+  selectedDate,
+  selectedTime,
+  selectedHallId,
+  initialClientId,
+  initialName,
+  initialPhone,
+}: Props) {
   const [halls, setHalls] = useState<Hall[]>([]);
   const [services, setServices] = useState<ServicePlan[]>([]);
   const [directions, setDirections] = useState<Direction[]>([]);
@@ -179,8 +192,55 @@ export function CreateClassDialog({ open, onClose, onCreated, selectedDate, sele
         wardrobeFee: 0,
         prepayment: "",
       });
+
+      // Auto pre-fill / select client from props (e.g. from WhatsApp Chat)
+      if (initialClientId && !initialClientId.includes("@")) {
+        fetch(`/api/clients/${initialClientId}`)
+          .then(r => r.ok ? r.json() : null)
+          .then(c => {
+            if (c && c.id) {
+              setSelectedClient(c);
+              setValue("clientId", c.id, { shouldValidate: true });
+            }
+          })
+          .catch(() => {});
+      } else if (initialPhone || initialName) {
+        const cleanP = (initialPhone || "").replace(/\D/g, "");
+        const queryTerm = cleanP.length >= 6 ? cleanP.slice(-10) : (initialName || "");
+        if (queryTerm) {
+          fetch(`/api/clients?q=${encodeURIComponent(queryTerm)}&limit=5`)
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+              const list: Client[] = Array.isArray(data) ? data : (data?.clients || []);
+              const exact = cleanP.length >= 6
+                ? list.find(c => (c.phone || "").replace(/\D/g, "").includes(cleanP.slice(-10)))
+                : list[0];
+              if (exact) {
+                setSelectedClient(exact);
+                setValue("clientId", exact.id, { shouldValidate: true });
+              } else {
+                const rawName = (initialName || "").trim();
+                const isPhoneName = rawName.startsWith("+") || rawName.startsWith("8 7") || /^\d+$/.test(rawName.replace(/\D/g, ""));
+                const nameParts = !isPhoneName && rawName !== "Клиент" ? rawName.split(" ") : [];
+                const fName = nameParts[0] || (isPhoneName ? "" : rawName);
+                const lName = nameParts.slice(1).join(" ") || "";
+                setNewFirstName(fName);
+                setNewLastName(lName);
+                setNewPhone(initialPhone || "");
+                setShowQuickCreate(true);
+              }
+            })
+            .catch(() => {
+              setNewPhone(initialPhone || "");
+              setShowQuickCreate(true);
+            });
+        } else {
+          setNewPhone(initialPhone || "");
+          setShowQuickCreate(true);
+        }
+      }
     }
-  }, [open, selectedDate, selectedTime, selectedHallId, reset, halls, services, directions]);
+  }, [open, selectedDate, selectedTime, selectedHallId, initialClientId, initialName, initialPhone, reset, halls, services, directions, setValue]);
 
   const currentServiceId = watch("directionId");
   const currentTrainerId = watch("trainerId");
