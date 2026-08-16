@@ -190,7 +190,7 @@ export function CertificateTemplateEditor({ open, onOpenChange }: Props) {
               {/* Верхняя часть: Логотип и Заголовок */}
               <div className="space-y-0.5 border-b pb-2 flex flex-col items-center" style={{ borderColor: config.borderColor + "40" }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/fotoidea-logo.png" alt="Fotoidea Logo" className="w-8 h-8 object-contain mb-0.5" />
+                <img src="/fotoidea-logo.png" alt="Fotoidea Logo" className="w-8 h-8 object-contain mb-[25px]" />
                 <span className="font-serif italic font-bold text-base leading-none block" style={{ color: config.textColor }}>
                   Fotoidea.kz
                 </span>

@@ -201,7 +201,10 @@ export async function GET(
     }
 
     // 2. Top Header Section
-    const titleY = height - 58;
+    const logoTop = height - 16;
+    let logoW = 28;
+    let logoH = 28;
+    const logoY = logoTop - logoH; // bottom of logo
 
     // Logo image with preserved aspect ratio
     const logoPath = path.join(process.cwd(), "public", "fotoidea-logo.png");
@@ -210,15 +213,15 @@ export async function GET(
         const logoBytes = fs.readFileSync(logoPath);
         const logoImage = await pdfDoc.embedPng(logoBytes);
         const aspect = logoImage.width / logoImage.height;
-        let logoW = 32;
-        let logoH = logoW / (aspect || 1);
-        if (logoH > 32) {
-          logoH = 32;
+        logoW = 28;
+        logoH = logoW / (aspect || 1);
+        if (logoH > 28) {
+          logoH = 28;
           logoW = logoH * aspect;
         }
         page.drawImage(logoImage, {
           x: (width - logoW) / 2,
-          y: titleY + 16,
+          y: logoY,
           width: logoW,
           height: logoH,
         });
@@ -227,21 +230,24 @@ export async function GET(
       }
     }
 
+    // 25px margin under the logo before the brand title
+    const brandY = logoY - 25;
+
     // Brand Name: Fotoidea.kz
-    drawCenteredText("Fotoidea.kz", fontBold, 15, titleY + 2, textColor);
+    drawCenteredText("Fotoidea.kz", fontBold, 14, brandY, textColor);
 
     // Title: С Е Р Т И Ф И К А Т
-    drawCenteredText(t.titleText || "С Е Р Т И Ф И К А Т", fontBold, 12.5, titleY - 13, textColor);
+    drawCenteredText(t.titleText || "С Е Р Т И Ф И К А Т", fontBold, 11.5, brandY - 14, textColor);
 
     // Subtitle: НА ПРОФЕССИОНАЛЬНУЮ ФОТОСЕССИЮ
     if (t.subtitleText) {
-      drawCenteredText(t.subtitleText, fontMedium, 6.5, titleY - 23, subtextColor);
+      drawCenteredText(t.subtitleText, fontMedium, 6.5, brandY - 23, subtextColor);
     }
 
     // Divider Line Top
     page.drawLine({
-      start: { x: 30, y: titleY - 31 },
-      end: { x: width - 30, y: titleY - 31 },
+      start: { x: 30, y: brandY - 30 },
+      end: { x: width - 30, y: brandY - 30 },
       thickness: 0.7,
       color: borderColor,
     });
