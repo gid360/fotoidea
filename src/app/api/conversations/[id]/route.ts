@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getEvolutionServerUrl } from "@/lib/whatsapp";
+import { calculateClientLoyaltyTag } from "@/lib/loyalty";
 
 export async function GET(
   req: NextRequest,
@@ -363,6 +364,23 @@ export async function GET(
       },
     },
   });
+
+  if (dbClient) {
+    const computedTag = calculateClientLoyaltyTag({
+      createdAt: dbClient.createdAt,
+      firstVisit: dbClient.firstVisit,
+      lastVisit: dbClient.lastVisit,
+      bookingsCount: dbClient.bookings.length,
+      bookings: dbClient.bookings,
+    });
+    if (computedTag !== dbClient.loyaltyTag) {
+      prisma.client.update({
+        where: { id: dbClient.id },
+        data: { loyaltyTag: computedTag },
+      }).catch((e) => console.error("Error updating client loyaltyTag:", e));
+      (dbClient as any).loyaltyTag = computedTag;
+    }
+  }
 
   const dbLead = await prisma.lead.findFirst({
     where: {
