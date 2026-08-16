@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
 import { ru } from "date-fns/locale";
+import { MessageText } from "@/components/MessageText";
 
 interface WaSession {
   id: string;
@@ -882,7 +883,7 @@ export function WhatsAppClient() {
                                 m.fromMe ? "bg-green-600 text-white rounded-tr-none" : "bg-white border border-slate-200 text-slate-900 rounded-tl-none"
                               )}
                             >
-                              {m.text}
+                              <MessageText text={m.text} isOutgoing={m.fromMe} />
 
                               {/* Display attached Reaction Badge */}
                               {reaction && (

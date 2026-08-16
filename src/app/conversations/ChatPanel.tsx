@@ -17,10 +17,12 @@ import { cn } from "@/lib/utils";
 import { Avatar } from "./Avatar";
 import { AvatarLightbox } from "./AvatarLightbox";
 import { ChannelBadge } from "./ChannelBadge";
+import { MessageText } from "@/components/MessageText";
 import type { ConversationDetailDto, MessageDto, ConversationListItemDto } from "./types";
 import { clientDisplayName, formatPhonePretty } from "./types";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+
 
 
 
@@ -992,7 +994,13 @@ export function ChatPanel({
                       })()
                     ) : null}
 
-                    {m.text ? <p>{m.text}</p> : (!m.mediaUrl && <p className="italic text-slate-400 font-medium">[Сообщение]</p>)}
+                    {m.text ? (
+                      <p>
+                        <MessageText text={m.text} isOutgoing={isOutgoing} />
+                      </p>
+                    ) : (
+                      !m.mediaUrl && <p className="italic text-slate-400 font-medium">[Сообщение]</p>
+                    )}
 
                     {/* Reaction badge */}
                     {allReactions.length > 0 && (
