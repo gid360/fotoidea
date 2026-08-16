@@ -793,7 +793,7 @@ export function ChatPanel({
       <div
         ref={chatContainerRef}
         onScroll={handleChatScroll}
-        className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:16px_16px]"
+        className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0 bg-[#efeae2] dark:bg-[#0b141a] bg-[url('/whatsapp-chat-bg.svg')] bg-repeat"
       >
         {/* Load older messages button / indicator */}
         {visibleMessagesCount < filteredMessages.length && !searchQuery.trim() && (

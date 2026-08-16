@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400" opacity="0.08">
+  <g fill="none" stroke="#4a5568" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Camera -->
+    <path d="M 30,40 L 45,40 L 50,34 L 65,34 L 70,40 L 85,40 C 88,40 90,42 90,45 L 90,75 C 90,78 88,80 85,80 L 30,80 C 27,80 25,78 25,75 L 25,45 C 25,42 27,40 30,40 Z" />
+    <circle cx="57" cy="60" r="12" />
+    <circle cx="78" cy="48" r="2.5" fill="#4a5568" />
+
+    <!-- Chat Bubble -->
+    <path d="M 140,40 C 140,30 180,30 180,40 C 180,50 165,55 155,55 L 145,65 L 148,55 C 142,55 140,50 140,40 Z" />
+    <circle cx="153" cy="42" r="1.5" fill="#4a5568" />
+    <circle cx="160" cy="42" r="1.5" fill="#4a5568" />
+    <circle cx="167" cy="42" r="1.5" fill="#4a5568" />
+
+    <!-- Coffee Cup -->
+    <path d="M 240,45 L 270,45 L 265,70 C 265,74 260,78 255,78 L 250,78 C 245,78 240,74 240,70 Z" />
+    <path d="M 270,50 C 276,50 278,54 278,58 C 278,62 275,65 268,65" />
+    <path d="M 248,36 Q 251,30 248,24" />
+    <path d="M 258,36 Q 261,30 258,24" />
+
+    <!-- Heart -->
+    <path d="M 340,50 C 335,40 320,42 320,55 C 320,68 340,82 340,82 C 340,82 360,68 360,55 C 360,42 345,40 340,50 Z" />
+
+    <!-- Music Note -->
+    <path d="M 40,140 L 40,165 M 40,140 L 60,135 L 60,160" />
+    <ellipse cx="34" cy="165" rx="6" ry="4" transform="rotate(-20 34 165)" fill="#4a5568" />
+    <ellipse cx="54" cy="160" rx="6" ry="4" transform="rotate(-20 54 160)" fill="#4a5568" />
+
+    <!-- Phone Handset -->
+    <path d="M 140,140 C 135,135 125,145 130,155 C 135,165 145,175 155,180 C 165,185 175,175 170,170 L 160,165 L 152,170 C 146,165 140,159 135,153 L 140,145 Z" />
+
+    <!-- Star -->
+    <polygon points="250,130 254,142 267,142 256,150 260,162 250,154 240,162 244,150 233,142 246,142" />
+
+    <!-- Clock -->
+    <circle cx="340" cy="150" r="16" />
+    <polyline points="340,140 340,150 348,150" />
+
+    <!-- Smiley Face -->
+    <circle cx="50" cy="250" r="16" />
+    <circle cx="44" cy="245" r="2" fill="#4a5568" />
+    <circle cx="56" cy="245" r="2" fill="#4a5568" />
+    <path d="M 43,254 Q 50,262 57,254" />
+
+    <!-- Paperclip -->
+    <path d="M 145,260 L 145,235 C 145,228 155,228 155,235 L 155,265 C 155,275 138,275 138,265 L 138,240" />
+
+    <!-- Gift Box -->
+    <rect x="235" y="240" width="30" height="25" rx="3" />
+    <rect x="232" y="234" width="36" height="8" rx="2" />
+    <line x1="250" y1="234" x2="250" y2="265" />
+    <path d="M 250,234 C 245,226 238,226 242,234 Z" />
+    <path d="M 250,234 C 255,226 262,226 258,234 Z" />
+
+    <!-- Thumbs Up -->
+    <path d="M 330,260 L 330,245 C 330,240 335,235 338,235 C 342,235 342,242 342,246 L 342,248 L 354,248 C 358,248 360,252 358,256 L 352,268 C 350,272 346,274 342,274 L 330,274 Z" />
+    <rect x="322" y="248" width="8" height="26" rx="2" />
+
+    <!-- Picture / Image Frame -->
+    <rect x="35" y="335" width="32" height="24" rx="3" />
+    <circle cx="44" cy="343" r="2.5" fill="#4a5568" />
+    <polyline points="37,355 47,346 54,352 60,347 65,355" />
+
+    <!-- Airplane / Send -->
+    <path d="M 135,350 L 165,335 L 150,365 L 145,352 Z" />
+    <line x1="145" y1="352" x2="165" y2="335" />
+
+    <!-- Location Pin -->
+    <path d="M 250,330 C 242,330 236,336 236,344 C 236,354 250,366 250,366 C 250,366 264,354 264,344 C 264,336 258,330 250,330 Z" />
+    <circle cx="250" cy="343" r="3.5" />
+
+    <!-- Message Checked / Double Check -->
+    <path d="M 328,348 L 334,354 L 346,342" />
+    <path d="M 336,348 L 342,354 L 354,342" />
+
+    <!-- Small decorative dots and crosses -->
+    <circle cx="100" cy="90" r="2" fill="#4a5568" />
+    <circle cx="200" cy="100" r="1.5" fill="#4a5568" />
+    <circle cx="300" cy="90" r="2" fill="#4a5568" />
+    <circle cx="90" cy="200" r="1.5" fill="#4a5568" />
+    <circle cx="200" cy="200" r="2" fill="#4a5568" />
+    <circle cx="300" cy="210" r="1.5" fill="#4a5568" />
+    <circle cx="100" cy="300" r="2" fill="#4a5568" />
+    <circle cx="200" cy="310" r="1.5" fill="#4a5568" />
+    <circle cx="310" cy="310" r="2" fill="#4a5568" />
+
+    <!-- Tiny crosses -->
+    <path d="M 95,20 L 105,20 M 100,15 L 100,25" stroke-width="1.2" />
+    <path d="M 295,195 L 305,195 M 300,190 L 300,200" stroke-width="1.2" />
+    <path d="M 195,375 L 205,375 M 200,370 L 200,380" stroke-width="1.2" />
+  </g>
+</svg>

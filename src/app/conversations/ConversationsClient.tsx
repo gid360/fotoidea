@@ -504,14 +504,21 @@ export function ConversationsClient() {
             }}
           />
         ) : activeSelectedId && isDetailLoading ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-muted-foreground bg-slate-50">
-            <RefreshCw className="h-7 w-7 animate-spin text-primary mb-2" />
-            <p className="font-medium text-xs text-slate-600">Загрузка переписки…</p>
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-muted-foreground bg-[#efeae2] dark:bg-[#0b141a] bg-[url('/whatsapp-chat-bg.svg')] bg-repeat">
+            <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-xs p-4 rounded-2xl shadow-xs border border-slate-200/60 flex flex-col items-center">
+              <RefreshCw className="h-6 w-6 animate-spin text-emerald-600 mb-2" />
+              <p className="font-medium text-xs text-slate-600 dark:text-slate-300">Загрузка переписки…</p>
+            </div>
           </div>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-muted-foreground bg-slate-50">
-            <MessageCircle className="h-12 w-12 text-slate-300 mb-2" />
-            <p className="font-medium text-sm">Выберите диалог для просмотра сообщений</p>
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-muted-foreground bg-[#efeae2] dark:bg-[#0b141a] bg-[url('/whatsapp-chat-bg.svg')] bg-repeat">
+            <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-xs p-6 rounded-2xl shadow-xs border border-slate-200/60 flex flex-col items-center max-w-xs">
+              <div className="w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-950/80 flex items-center justify-center mb-3 text-emerald-600">
+                <MessageCircle className="h-7 w-7" />
+              </div>
+              <p className="font-semibold text-sm text-slate-800 dark:text-slate-100">WhatsApp переписка</p>
+              <p className="text-xs text-slate-500 mt-1">Выберите диалог из списка слева, чтобы просмотреть сообщения</p>
+            </div>
           </div>
         )}
       </div>
