@@ -319,14 +319,35 @@ export function ClientPanel({
               </span>
 
               {client.instagramUsername ? (
-                <button
-                  type="button"
-                  onClick={handleInstagramClick}
-                  className="w-5 h-5 rounded-full bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] text-white flex items-center justify-center hover:opacity-90 hover:scale-105 active:scale-95 transition-all shadow-2xs cursor-pointer shrink-0"
-                  title={`Открыть @${client.instagramUsername.replace(/^@/, "")} в Instagram`}
-                >
-                  <Instagram className="h-3 w-3" />
-                </button>
+                <div className="inline-flex items-center gap-1 bg-pink-50 border border-pink-200/80 rounded-full px-1.5 py-0.5">
+                  <button
+                    type="button"
+                    onClick={handleInstagramClick}
+                    className="w-4 h-4 rounded-full bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] text-white flex items-center justify-center hover:opacity-90 hover:scale-105 active:scale-95 transition-all shadow-2xs cursor-pointer shrink-0"
+                    title={`Открыть @${client.instagramUsername.replace(/^@/, "")} в Instagram`}
+                  >
+                    <Instagram className="h-2.5 w-2.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleInstagramClick}
+                    className="text-[10px] font-semibold text-pink-700 hover:text-pink-900 truncate max-w-[90px] cursor-pointer"
+                    title={`Открыть @${client.instagramUsername.replace(/^@/, "")} в Instagram`}
+                  >
+                    @{client.instagramUsername.replace(/^@/, "")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInstaInput(client.instagramUsername || "");
+                      setInstaModalOpen(true);
+                    }}
+                    className="text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer rounded transition-colors"
+                    title="Редактировать Instagram"
+                  >
+                    <Edit2 className="h-2.5 w-2.5" />
+                  </button>
+                </div>
               ) : (
                 <button
                   type="button"
@@ -366,74 +387,6 @@ export function ClientPanel({
               )}
             </div>
           </div>
-        </div>
-
-        {/* Instagram Account Section */}
-        <div className="space-y-1.5 pt-1">
-          <label className="font-semibold text-slate-700 flex items-center justify-between">
-            <span className="flex items-center gap-1.5">
-              <Instagram className="h-3.5 w-3.5 text-pink-600" />
-              Instagram
-            </span>
-          </label>
-          {client.instagramUsername ? (
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={handleInstagramClick}
-                className="flex-1 flex items-center justify-between px-2.5 py-1.5 rounded-lg border border-pink-200 bg-pink-50/80 hover:bg-pink-100/90 text-pink-700 font-semibold text-xs transition-colors group cursor-pointer"
-                title="Открыть профиль Instagram"
-              >
-                <span className="flex items-center gap-1.5 truncate">
-                  <span className="w-5 h-5 rounded-full bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] text-white flex items-center justify-center shrink-0 shadow-2xs">
-                    <Instagram className="h-3 w-3" />
-                  </span>
-                  @{client.instagramUsername.replace(/^@/, "")}
-                </span>
-                <ExternalLink className="h-3 w-3 text-pink-500 group-hover:translate-x-0.5 transition-transform" />
-              </button>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8 rounded-lg text-slate-500 hover:text-slate-700 shrink-0"
-                onClick={() => {
-                  setInstaInput(client.instagramUsername || "");
-                  setInstaModalOpen(true);
-                }}
-                title="Изменить Instagram"
-              >
-                <Edit2 className="h-3 w-3" />
-              </Button>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg border border-dashed border-pink-200 bg-pink-50/40">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setInstaInput("");
-                    setInstaModalOpen(true);
-                  }}
-                  className="w-7 h-7 rounded-full bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] text-white flex items-center justify-center hover:opacity-90 hover:scale-105 active:scale-95 transition-all shadow-xs cursor-pointer shrink-0"
-                  title="Привязать Instagram аккаунт"
-                >
-                  <Instagram className="h-3.5 w-3.5" />
-                </button>
-                <span className="text-xs text-slate-600 font-medium">Instagram не привязан</span>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setInstaInput("");
-                  setInstaModalOpen(true);
-                }}
-                className="h-7 text-xs text-pink-700 hover:text-pink-800 hover:bg-pink-100/70 font-semibold px-2 rounded-md cursor-pointer"
-              >
-                Привязать
-              </Button>
-            </div>
-          )}
         </div>
 
         {/* Task Button & Modal */}
