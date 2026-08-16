@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { PDFDocument, rgb, degrees } from "pdf-lib";
+import { PDFDocument, rgb } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import fs from "fs";
 import path from "path";
@@ -17,10 +15,10 @@ const DEFAULT_TEMPLATE = {
   subtextColor: "#7D7265",
   titleText: "С Е Р Т И Ф И К А Т",
   subtitleText: "НА ПРОФЕССИОНАЛЬНУЮ ФОТОСЕССИЮ",
-  rulesText: "Продолжительность 1 час\n100 обработанных фотографий\nКоличество участников до 6 человек\nПомощь в позировании",
+  rulesText: "Готовые интерьерные фотозоны\nПрофессиональный фотограф\nКоличество участников до 4 человек\nОбработанные фотографии на облаке",
   studioPhone: "+7 777 79 79 888",
   studioInstagram: "fotoideakz",
-  studioAddress: "г. Уральск, пр. Абулхаир хана 147, ЖК Азимут, 1 этаж",
+  studioAddress: "г. Уральск, пр. Абулхаир хана 147, ЖК Азимут",
   studioWebsite: "WWW.FOTOIDEA.KZ",
   showBorder: true,
   titlePosY: 20,
@@ -112,20 +110,33 @@ export async function GET(
       console.error("Error loading certificate template setting:", e);
     }
 
-    // Load Cyrillic & Latin Fonts from @fontsource/roboto
-    const filesDir = path.join(process.cwd(), "node_modules", "@fontsource", "roboto", "files");
-    const fontCyrillicBytes = fs.readFileSync(path.join(filesDir, "roboto-cyrillic-400-normal.woff"));
-    const fontCyrillicBoldBytes = fs.readFileSync(path.join(filesDir, "roboto-cyrillic-700-normal.woff"));
-    const fontLatinBytes = fs.readFileSync(path.join(filesDir, "roboto-latin-400-normal.woff"));
-    const fontLatinBoldBytes = fs.readFileSync(path.join(filesDir, "roboto-latin-700-normal.woff"));
+    // Load Full Unicode TTF Fonts (with complete Latin + Cyrillic + Digits + Symbols support)
+    const fontRegularPath = path.join(process.cwd(), "public", "fonts", "Roboto-Regular.ttf");
+    const fontBoldPath = path.join(process.cwd(), "public", "fonts", "Roboto-Bold.ttf");
+    const fontMediumPath = path.join(process.cwd(), "public", "fonts", "Roboto-Medium.ttf");
+
+    let fontRegularBytes: Buffer;
+    let fontBoldBytes: Buffer;
+    let fontMediumBytes: Buffer;
+
+    if (fs.existsSync(fontRegularPath) && fs.existsSync(fontBoldPath)) {
+      fontRegularBytes = fs.readFileSync(fontRegularPath);
+      fontBoldBytes = fs.readFileSync(fontBoldPath);
+      fontMediumBytes = fs.existsSync(fontMediumPath) ? fs.readFileSync(fontMediumPath) : fontBoldBytes;
+    } else {
+      // Fallback
+      const filesDir = path.join(process.cwd(), "node_modules", "@fontsource", "roboto", "files");
+      fontRegularBytes = fs.readFileSync(path.join(filesDir, "roboto-latin-400-normal.woff"));
+      fontBoldBytes = fs.readFileSync(path.join(filesDir, "roboto-latin-700-normal.woff"));
+      fontMediumBytes = fontBoldBytes;
+    }
 
     const pdfDoc = await PDFDocument.create();
     pdfDoc.registerFontkit(fontkit);
 
-    const fontCyrillic = await pdfDoc.embedFont(fontCyrillicBytes);
-    const fontCyrillicBold = await pdfDoc.embedFont(fontCyrillicBoldBytes);
-    const fontLatin = await pdfDoc.embedFont(fontLatinBytes);
-    const fontLatinBold = await pdfDoc.embedFont(fontLatinBoldBytes);
+    const fontRegular = await pdfDoc.embedFont(fontRegularBytes);
+    const fontBold = await pdfDoc.embedFont(fontBoldBytes);
+    const fontMedium = await pdfDoc.embedFont(fontMediumBytes);
 
     // Standard 10x15 cm Portrait Printable Dimensions: 283.5 x 425.2 pt
     const page = pdfDoc.addPage([283.5, 425.2]);
@@ -136,81 +147,17 @@ export async function GET(
     const textColor = hexToRgb(t.textColor, rgb(0.24, 0.21, 0.18)); // #3D352E
     const subtextColor = hexToRgb(t.subtextColor, rgb(0.49, 0.45, 0.40)); // #7D7265
 
-    // Helper function to split text into Cyrillic vs Latin chunks with neutral character inheriting
-    const getChunks = (text: string) => {
-      const chunks: { text: string; isCyrillic: boolean }[] = [];
-      let currentChunk = "";
-      let currentIsCyrillic: boolean | null = null;
-
-      for (const char of text) {
-        const isCyr = /[\u0400-\u04FF\u2116]/.test(char);
-        const isLat = /[a-zA-Z]/.test(char);
-
-        if (currentIsCyrillic === null) {
-          currentIsCyrillic = isCyr || !isLat;
-          currentChunk = char;
-        } else if (isCyr) {
-          if (currentIsCyrillic) {
-            currentChunk += char;
-          } else {
-            chunks.push({ text: currentChunk, isCyrillic: false });
-            currentIsCyrillic = true;
-            currentChunk = char;
-          }
-        } else if (isLat) {
-          if (!currentIsCyrillic) {
-            currentChunk += char;
-          } else {
-            chunks.push({ text: currentChunk, isCyrillic: true });
-            currentIsCyrillic = false;
-            currentChunk = char;
-          }
-        } else {
-          // Neutral char (digits, spaces, punctuation): inherit current font
-          currentChunk += char;
-        }
-      }
-      if (currentChunk) {
-        chunks.push({ text: currentChunk, isCyrillic: !!currentIsCyrillic });
-      }
-      return chunks;
-    };
-
-    const measureSmartText = (text: string, isBold: boolean, size: number) => {
-      const chunks = getChunks(text);
-      let totalWidth = 0;
-      for (const chunk of chunks) {
-        const font = chunk.isCyrillic
-          ? (isBold ? fontCyrillicBold : fontCyrillic)
-          : (isBold ? fontLatinBold : fontLatin);
-        totalWidth += font.widthOfTextAtSize(chunk.text, size);
-      }
-      return totalWidth;
-    };
-
-    const centerSmartText = (text: string, isBold: boolean, size: number, y: number, color: any) => {
+    const drawCenteredText = (text: string, font: any, size: number, y: number, color: any) => {
       if (!text) return;
-      const totalWidth = measureSmartText(text, isBold, size);
-      let currentX = (width - totalWidth) / 2;
-
-      const chunks = getChunks(text);
-      for (const chunk of chunks) {
-        const font = chunk.isCyrillic
-          ? (isBold ? fontCyrillicBold : fontCyrillic)
-          : (isBold ? fontLatinBold : fontLatin);
-
-        page.drawText(chunk.text, {
-          x: currentX,
-          y,
-          size,
-          font,
-          color,
-        });
-        currentX += font.widthOfTextAtSize(chunk.text, size);
-      }
+      const textWidth = font.widthOfTextAtSize(text, size);
+      page.drawText(text, {
+        x: (width - textWidth) / 2,
+        y,
+        size,
+        font,
+        color,
+      });
     };
-
-    const getY = (percent: number) => height - (height * percent) / 100;
 
     // 1. Background Fill / PNG Background Image
     let hasBgImage = false;
@@ -242,59 +189,65 @@ export async function GET(
       });
 
       if (t.showBorder !== false) {
-        const frameSize = 12;
+        const frameSize = 10;
         page.drawRectangle({ x: 0, y: 0, width, height: frameSize, color: borderColor });
         page.drawRectangle({ x: 0, y: height - frameSize, width, height: frameSize, color: borderColor });
         page.drawRectangle({ x: 0, y: 0, width: frameSize, height, color: borderColor });
         page.drawRectangle({ x: width - frameSize, y: 0, width: frameSize, height, color: borderColor });
 
-        const innerPath = getRoundedRectPath(frameSize, frameSize, width - frameSize * 2, height - frameSize * 2, 15);
+        const innerPath = getRoundedRectPath(frameSize, frameSize, width - frameSize * 2, height - frameSize * 2, 14);
         page.drawSvgPath(innerPath, { color: bgColor });
       }
     }
 
-    // 3. Top Header Section (Vertical Portrait)
-    const titleY = t.titlePosY ? getY(t.titlePosY) : height - 60;
+    // 2. Top Header Section
+    const titleY = height - 58;
 
-    // Logo image
+    // Logo image with preserved aspect ratio
     const logoPath = path.join(process.cwd(), "public", "fotoidea-logo.png");
     if (fs.existsSync(logoPath)) {
       try {
         const logoBytes = fs.readFileSync(logoPath);
         const logoImage = await pdfDoc.embedPng(logoBytes);
-        const logoSize = 32;
+        const aspect = logoImage.width / logoImage.height;
+        let logoW = 32;
+        let logoH = logoW / (aspect || 1);
+        if (logoH > 32) {
+          logoH = 32;
+          logoW = logoH * aspect;
+        }
         page.drawImage(logoImage, {
-          x: (width - logoSize) / 2,
-          y: titleY + 22,
-          width: logoSize,
-          height: logoSize,
+          x: (width - logoW) / 2,
+          y: titleY + 16,
+          width: logoW,
+          height: logoH,
         });
       } catch (e) {
         console.error("Error embedding logo PNG:", e);
       }
     }
 
-    // Logo: Fotoidea.kz
-    centerSmartText("Fotoidea.kz", true, 16, titleY + 4, textColor);
+    // Brand Name: Fotoidea.kz
+    drawCenteredText("Fotoidea.kz", fontBold, 15, titleY + 2, textColor);
 
     // Title: С Е Р Т И Ф И К А Т
-    centerSmartText(t.titleText || "С Е Р Т И Ф И К А Т", true, 13, titleY - 12, textColor);
+    drawCenteredText(t.titleText || "С Е Р Т И Ф И К А Т", fontBold, 12.5, titleY - 13, textColor);
 
     // Subtitle: НА ПРОФЕССИОНАЛЬНУЮ ФОТОСЕССИЮ
     if (t.subtitleText) {
-      centerSmartText(t.subtitleText, false, 6.5, titleY - 22, subtextColor);
+      drawCenteredText(t.subtitleText, fontMedium, 6.5, titleY - 23, subtextColor);
     }
 
-    // Divider Line Top (Single Divider)
+    // Divider Line Top
     page.drawLine({
-      start: { x: 30, y: titleY - 30 },
-      end: { x: width - 30, y: titleY - 30 },
-      thickness: 0.8,
+      start: { x: 30, y: titleY - 31 },
+      end: { x: width - 30, y: titleY - 31 },
+      thickness: 0.7,
       color: borderColor,
     });
 
     // Helper function to split long description text into wrapped lines
-    const wrapTextLines = (rawText: string, maxCharsPerLine = 46): string[] => {
+    const wrapTextLines = (rawText: string, maxCharsPerLine = 48): string[] => {
       const output: string[] = [];
       const paragraphs = rawText.split("\n");
       for (const p of paragraphs) {
@@ -321,21 +274,21 @@ export async function GET(
       return output;
     };
 
-    // 4. Custom Recipient Field ("Для кого / От кого") & Code Section (Lowered by 25px)
-    const codeY = (t.codePosY ? getY(t.codePosY) : height - 130) - 25;
+    // 3. Recipient Field & Certificate Code
+    const codeY = height - 165;
 
     if (cert.recipientText) {
-      centerSmartText(cert.recipientText, false, 8.5, codeY + 26, textColor);
+      drawCenteredText(cert.recipientText, fontRegular, 8.5, codeY + 24, textColor);
     }
 
     const codeText = `№ ${cert.code}`;
-    centerSmartText(codeText, true, 17, codeY, textColor);
+    drawCenteredText(codeText, fontBold, 18, codeY, textColor);
 
     // Expiration date directly below Certificate Number
     const expiresStr = cert.expiresAt ? format(new Date(cert.expiresAt), "dd.MM.yyyy") : "Бессрочно";
-    centerSmartText(`Действителен до ${expiresStr}`, false, 8, codeY - 14, subtextColor);
+    drawCenteredText(`Действителен до ${expiresStr}`, fontMedium, 8, codeY - 14, subtextColor);
 
-    // 5. Main Service Title & Included Items
+    // 4. Main Service Title & Included Items
     let mainServiceTitle = "Фотосессия в фотостудии FOTOIDEA";
     if (cert.type === "NOMINAL") {
       const amount = cert.nominalAmount ? Number(cert.nominalAmount).toLocaleString("ru-RU") : "0";
@@ -344,13 +297,31 @@ export async function GET(
       mainServiceTitle = planName;
     }
 
-    const detailsY = codeY - 54;
-    centerSmartText(mainServiceTitle, true, 10, detailsY, textColor);
+    const detailsY = codeY - 48;
+    drawCenteredText(mainServiceTitle, fontBold, 11, detailsY, textColor);
 
-    let currentY = detailsY - 14;
+    let currentY = detailsY - 15;
 
-    const rawRules = planDescription || t.rulesText || "";
-    const lines = wrapTextLines(rawRules, 46);
+    let rawRules = "";
+    if (cert.type === "NOMINAL") {
+      rawRules = t.rulesText || "Сертификат на любые услуги фотостудии\nДействует на аренду залов и фотосессии";
+    } else if (planDescription) {
+      rawRules = planDescription;
+    } else {
+      rawRules = t.rulesText || "Готовые интерьерные фотозоны\nПрофессиональный фотограф\nКоличество участников до 4 человек\nОбработанные фотографии на облаке";
+    }
+
+    // Split sentences or lines cleanly
+    let lines: string[] = [];
+    if (rawRules.includes("\n")) {
+      lines = wrapTextLines(rawRules, 48);
+    } else {
+      const sentences = rawRules.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 0);
+      for (const s of sentences) {
+        lines.push(...wrapTextLines(s, 48));
+      }
+    }
+
     if (cert.peopleCount) {
       const idx = lines.findIndex(l => l.toLowerCase().includes("участник") || l.toLowerCase().includes("человек"));
       if (idx !== -1) {
@@ -358,27 +329,24 @@ export async function GET(
       }
     }
 
-    lines.forEach((line) => {
-      centerSmartText(line, false, 7.5, currentY, subtextColor);
-      currentY -= 11.5;
+    lines.slice(0, 5).forEach((line) => {
+      drawCenteredText(line.trim(), fontRegular, 7.5, currentY, subtextColor);
+      currentY -= 12;
     });
 
-    // 6. QR Code Generation (Centered - Dark Rounded Box)
-    const qrSectionY = t.rulesPosY ? getY(t.rulesPosY) : height - 295;
-
-    const origin = req.nextUrl.origin || "https://fotoidea.kz";
-    const publicUrl = `${origin}/c/${cert.code}`;
-
-    // Dark Rounded Container for QR Code (10px rounded corners)
+    // 5. QR Code Generation (Centered Dark Box)
+    const qrSectionY = height - 305;
     const boxSize = 52;
     const boxX = (width - boxSize) / 2;
     const boxY = qrSectionY - 20;
     const qrBoxPath = getRoundedRectPath(boxX, boxY, boxSize, boxSize, 10);
 
-    const darkColor = rgb(0.11, 0.11, 0.11);
     page.drawSvgPath(qrBoxPath, {
-      color: darkColor,
+      color: rgb(0.11, 0.11, 0.11),
     });
+
+    const origin = req.nextUrl.origin || "https://fotoidea.kz";
+    const publicUrl = `${origin}/c/${cert.code}`;
 
     const qrDataUrl = await QRCode.toDataURL(publicUrl, {
       margin: 1,
@@ -398,15 +366,15 @@ export async function GET(
       height: qrImageSize,
     });
 
-    centerSmartText("Электронная версия сертификата", false, 6.5, qrSectionY - 30, subtextColor);
+    drawCenteredText("Электронная версия сертификата", fontMedium, 6.5, qrSectionY - 30, subtextColor);
 
-    // 7. Contacts (Bottom Section)
+    // 6. Contacts & Address (Bottom Section)
     const phone = t.studioPhone || "+7 777 79 79 888";
     const insta = t.studioInstagram ? `@${t.studioInstagram.replace(/^@/, "")}` : "fotoideakz";
-    centerSmartText(`${phone}   |   ${insta}`, true, 9, 52, textColor);
+    drawCenteredText(`${phone}   ·   ${insta}`, fontBold, 8.5, 48, textColor);
 
-    const address = t.studioAddress || "г. Уральск, пр. Абулхаир хана 147, ЖК Азимут, 1 этаж";
-    centerSmartText(address, false, 7, 36, subtextColor);
+    const address = t.studioAddress || "г. Уральск, пр. Абулхаир хана 147, ЖК Азимут";
+    drawCenteredText(address, fontRegular, 7, 34, subtextColor);
 
     const pdfBytes = await pdfDoc.save();
 
