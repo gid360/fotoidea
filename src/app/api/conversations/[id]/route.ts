@@ -342,28 +342,31 @@ export async function GET(
     }
   }
 
-  const activeSearchPhone = resolvedPhone || (phone && phone.length <= 12 ? phone : "");
+  const activeSearchPhone = (resolvedPhone && resolvedPhone.length >= 10 && resolvedPhone.length <= 12)
+    ? resolvedPhone
+    : (phone && phone.length >= 10 && phone.length <= 12)
+    ? phone
+    : "";
 
-  // Also query DB for client & lead
-  const dbClient = await prisma.client.findFirst({
-    where: {
-      OR: [
-        activeSearchPhone ? { phone: { contains: activeSearchPhone.slice(-10) } } : undefined,
-        phone && phone.length <= 12 ? { phone: { contains: phone.slice(-10) } } : undefined,
-      ].filter(Boolean) as any,
-    },
-    include: {
-      bookings: {
+  // Also query DB for client & lead (only if we have a valid >=10 digit phone number)
+  const dbClient = activeSearchPhone
+    ? await prisma.client.findFirst({
+        where: {
+          phone: { contains: activeSearchPhone.slice(-10) },
+        },
         include: {
-          classEvent: {
+          bookings: {
             include: {
-              direction: true,
+              classEvent: {
+                include: {
+                  direction: true,
+                },
+              },
             },
           },
         },
-      },
-    },
-  });
+      })
+    : null;
 
   if (dbClient) {
     const computedTag = calculateClientLoyaltyTag({
@@ -382,14 +385,13 @@ export async function GET(
     }
   }
 
-  const dbLead = await prisma.lead.findFirst({
-    where: {
-      OR: [
-        activeSearchPhone ? { phone: { contains: activeSearchPhone.slice(-10) } } : undefined,
-        phone && phone.length <= 12 ? { phone: { contains: phone.slice(-10) } } : undefined,
-      ].filter(Boolean) as any,
-    },
-  });
+  const dbLead = activeSearchPhone
+    ? await prisma.lead.findFirst({
+        where: {
+          phone: { contains: activeSearchPhone.slice(-10) },
+        },
+      })
+    : null;
 
   // Query local PostgreSQL for any outgoing messages sent through CRM that might be missing or syncing
   try {
@@ -560,14 +562,14 @@ export async function PATCH(
   const phone = rawPhone.split("@")[0].replace(/\D/g, "");
 
   let client = null;
-  if (phone && phone.length <= 12) {
+  if (phone && phone.length >= 10 && phone.length <= 12) {
     client = await prisma.client.findFirst({
       where: { phone: { contains: phone.slice(-10) } },
     });
   }
 
   const formattedPhone =
-    phone && phone.length <= 12
+    phone && phone.length >= 10 && phone.length <= 12
       ? phone.startsWith("7") || phone.startsWith("8")
         ? `+7${phone.slice(-10)}`
         : `+${phone}`
@@ -586,7 +588,11 @@ export async function PATCH(
     }
   } else {
     const updateData: any = {};
-    if (body.name !== undefined) updateData.firstName = body.name;
+    if (body.name !== undefined) {
+      const parts = (body.name || "").trim().split(/\s+/);
+      updateData.firstName = parts[0] || "";
+      updateData.lastName = parts.slice(1).join(" ") || "";
+    }
     if (body.instagramUsername !== undefined) updateData.instagramUsername = body.instagramUsername || null;
     if (Object.keys(updateData).length > 0) {
       client = await prisma.client.update({
@@ -596,8 +602,8 @@ export async function PATCH(
     }
   }
 
-  if (body.funnelStageId) {
-    if (client) {
+  if (body.funnelStageId || body.name) {
+    if (client && body.funnelStageId) {
       const loyaltyTag =
         body.funnelStageId === "NEW"
           ? "NEW"
@@ -613,24 +619,27 @@ export async function PATCH(
     }
 
     let lead = null;
-    if (phone && phone.length <= 12) {
+    if (phone && phone.length >= 10 && phone.length <= 12) {
       lead = await prisma.lead.findFirst({
         where: { phone: { contains: phone.slice(-10) } },
       });
     }
 
     if (lead) {
+      const leadUpdate: any = {};
+      if (body.funnelStageId) leadUpdate.status = body.funnelStageId;
+      if (body.name) leadUpdate.name = body.name;
       await prisma.lead.update({
         where: { id: lead.id },
-        data: { status: body.funnelStageId },
+        data: leadUpdate,
       });
-    } else {
+    } else if (body.funnelStageId || body.name) {
       await prisma.lead.create({
         data: {
-          name: client?.firstName || (phone.length <= 12 ? formattedPhone : "Клиент"),
+          name: body.name || client?.firstName || (phone.length >= 10 && phone.length <= 12 ? formattedPhone : "Клиент"),
           phone: formattedPhone,
           source: "WHATSAPP",
-          status: body.funnelStageId,
+          status: body.funnelStageId || "NEW",
         },
       });
     }

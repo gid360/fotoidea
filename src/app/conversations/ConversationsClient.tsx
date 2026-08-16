@@ -520,6 +520,7 @@ export function ConversationsClient() {
           )}
         >
           <ClientPanel
+            key={detail.id}
             conversation={detail}
             onChanged={handleRefreshAll}
             onBack={() => setMobileView("chat")}

@@ -374,17 +374,19 @@ export function ClientDetail({ clientId }: { clientId: string }) {
 
                     {/* Инстаграм кнопка Связать / Переход */}
                     {client.instagramUsername ? (
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1.5">
                         <button
                           type="button"
                           onClick={() => {
                             const handle = client.instagramUsername?.trim().replace(/^@/, "");
                             if (handle) window.open(`https://instagram.com/${handle}`, "_blank");
                           }}
-                          className="flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-full font-semibold text-pink-700 bg-pink-100 dark:bg-pink-950/60 dark:text-pink-300 border border-pink-200 hover:bg-pink-200/80 transition-colors cursor-pointer"
+                          className="flex items-center gap-1.5 text-xs px-2.5 py-0.5 rounded-full font-semibold text-pink-700 bg-pink-100 dark:bg-pink-950/60 dark:text-pink-300 border border-pink-200 hover:bg-pink-200/80 transition-colors cursor-pointer"
                           title="Открыть профиль Instagram"
                         >
-                          <Instagram className="h-3.5 w-3.5" />
+                          <span className="w-4 h-4 rounded-full bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] text-white flex items-center justify-center shrink-0 shadow-2xs">
+                            <Instagram className="h-2.5 w-2.5" />
+                          </span>
                           @{client.instagramUsername.replace(/^@/, "")}
                         </button>
                         <button
@@ -400,19 +402,17 @@ export function ClientDetail({ clientId }: { clientId: string }) {
                         </button>
                       </div>
                     ) : (
-                      <Button
-                        variant="outline"
-                        size="sm"
+                      <button
+                        type="button"
                         onClick={() => {
                           setInstaInput("");
                           setInstaModalOpen(true);
                         }}
-                        className="h-6 text-xs gap-1 border-pink-300 text-pink-700 hover:bg-pink-50 font-medium"
+                        className="w-6 h-6 rounded-full bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] text-white flex items-center justify-center hover:opacity-90 hover:scale-105 active:scale-95 transition-all shadow-2xs cursor-pointer shrink-0"
+                        title="Привязать Instagram"
                       >
                         <Instagram className="h-3 w-3" />
-                        <Link2 className="h-3 w-3" />
-                        Связать с Instagram
-                      </Button>
+                      </button>
                     )}
 
                     <span className="flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-full font-semibold text-emerald-700 bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-300">

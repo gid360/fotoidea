@@ -259,6 +259,7 @@ export function ClientPanel({
                   onChange={(e) => setNameInput(e.target.value)}
                   className="h-7 text-xs"
                   placeholder="Имя клиента"
+                  autoFocus
                 />
                 <Button size="icon" className="h-7 w-7" onClick={handleSaveName} disabled={savingName}>
                   {savingName ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
@@ -270,7 +271,15 @@ export function ClientPanel({
             ) : (
               <div className="flex items-center gap-1 group">
                 <h3 className="font-bold text-sm text-slate-900 truncate">{clientDisplayName(client)}</h3>
-                <button onClick={() => { setNameInput(client.name || ""); setEditingName(true); }} className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-slate-600 shrink-0 cursor-pointer p-0.5">
+                <button
+                  onClick={() => {
+                    const currentName = client.name || (clientDisplayName(client) !== "Клиент" && !clientDisplayName(client).startsWith("+") && !clientDisplayName(client).startsWith("8 ") ? clientDisplayName(client) : "");
+                    setNameInput(currentName);
+                    setEditingName(true);
+                  }}
+                  className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-slate-600 shrink-0 cursor-pointer p-0.5"
+                  title="Изменить имя клиента"
+                >
                   <Edit2 className="h-3 w-3" />
                 </button>
               </div>
@@ -308,6 +317,29 @@ export function ClientPanel({
               >
                 {SEGMENT_LABEL[client.segment] || "Клиент"}
               </span>
+
+              {client.instagramUsername ? (
+                <button
+                  type="button"
+                  onClick={handleInstagramClick}
+                  className="w-5 h-5 rounded-full bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] text-white flex items-center justify-center hover:opacity-90 hover:scale-105 active:scale-95 transition-all shadow-2xs cursor-pointer shrink-0"
+                  title={`Открыть @${client.instagramUsername.replace(/^@/, "")} в Instagram`}
+                >
+                  <Instagram className="h-3 w-3" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setInstaInput("");
+                    setInstaModalOpen(true);
+                  }}
+                  className="w-5 h-5 rounded-full border border-pink-300 bg-pink-50 hover:bg-pink-100 text-pink-600 flex items-center justify-center hover:scale-105 active:scale-95 transition-all cursor-pointer shrink-0"
+                  title="Привязать Instagram"
+                >
+                  <Instagram className="h-2.5 w-2.5" />
+                </button>
+              )}
 
               {client.dbClientId || (client.id && !client.id.includes("@")) ? (
                 <a
@@ -353,7 +385,9 @@ export function ClientPanel({
                 title="Открыть профиль Instagram"
               >
                 <span className="flex items-center gap-1.5 truncate">
-                  <Instagram className="h-3.5 w-3.5 text-pink-600 shrink-0" />
+                  <span className="w-5 h-5 rounded-full bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] text-white flex items-center justify-center shrink-0 shadow-2xs">
+                    <Instagram className="h-3 w-3" />
+                  </span>
                   @{client.instagramUsername.replace(/^@/, "")}
                 </span>
                 <ExternalLink className="h-3 w-3 text-pink-500 group-hover:translate-x-0.5 transition-transform" />
@@ -361,7 +395,7 @@ export function ClientPanel({
               <Button
                 variant="outline"
                 size="icon"
-                className="h-8 w-8 text-slate-500 hover:text-slate-700 shrink-0"
+                className="h-8 w-8 rounded-lg text-slate-500 hover:text-slate-700 shrink-0"
                 onClick={() => {
                   setInstaInput(client.instagramUsername || "");
                   setInstaModalOpen(true);
@@ -372,19 +406,33 @@ export function ClientPanel({
               </Button>
             </div>
           ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setInstaInput("");
-                setInstaModalOpen(true);
-              }}
-              className="w-full h-8 text-xs gap-1.5 border-pink-200 text-pink-700 hover:bg-pink-50 hover:border-pink-300 font-medium"
-            >
-              <Instagram className="h-3.5 w-3.5 text-pink-600" />
-              <Link2 className="h-3 w-3" />
-              Связать с Instagram
-            </Button>
+            <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg border border-dashed border-pink-200 bg-pink-50/40">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setInstaInput("");
+                    setInstaModalOpen(true);
+                  }}
+                  className="w-7 h-7 rounded-full bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] text-white flex items-center justify-center hover:opacity-90 hover:scale-105 active:scale-95 transition-all shadow-xs cursor-pointer shrink-0"
+                  title="Привязать Instagram аккаунт"
+                >
+                  <Instagram className="h-3.5 w-3.5" />
+                </button>
+                <span className="text-xs text-slate-600 font-medium">Instagram не привязан</span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setInstaInput("");
+                  setInstaModalOpen(true);
+                }}
+                className="h-7 text-xs text-pink-700 hover:text-pink-800 hover:bg-pink-100/70 font-semibold px-2 rounded-md cursor-pointer"
+              >
+                Привязать
+              </Button>
+            </div>
           )}
         </div>
 
