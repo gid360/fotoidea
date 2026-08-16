@@ -37,6 +37,7 @@ services:
       - NODE_ENV=production
       - NEXT_TELEMETRY_DISABLED=1
       - PORT=3000
+      - EVOLUTION_INTERNAL_URL=http://evolution_api:8080
     volumes:
       - ./public/uploads:/app/public/uploads
     networks:

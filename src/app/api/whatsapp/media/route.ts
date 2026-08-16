@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getEvolutionServerUrl } from "@/lib/whatsapp";
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -24,7 +25,7 @@ export async function GET(req: NextRequest) {
     return new NextResponse("WhatsApp Evolution API is not configured", { status: 500 });
   }
 
-  const cleanServerUrl = wa.serverUrl.replace(/\/+$/, "");
+  const cleanServerUrl = getEvolutionServerUrl(wa.serverUrl);
   const headers = { "Content-Type": "application/json", "apikey": wa.apiKey };
 
   try {

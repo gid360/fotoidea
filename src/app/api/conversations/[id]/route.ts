@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getEvolutionServerUrl } from "@/lib/whatsapp";
 
 export async function GET(
   req: NextRequest,
@@ -27,7 +28,7 @@ export async function GET(
   let pushName: string | null = null;
 
   if (wa && wa.provider === "EVOLUTION" && wa.serverUrl && wa.instanceName && wa.apiKey) {
-    const cleanServerUrl = wa.serverUrl.replace(/\/+$/, "");
+    const cleanServerUrl = getEvolutionServerUrl(wa.serverUrl);
     const headers = { "Content-Type": "application/json", "apikey": wa.apiKey };
 
     try {
@@ -535,8 +536,9 @@ export async function PATCH(
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
+  const decodedJid = decodeURIComponent(id);
   const body = await req.json();
-  const rawPhone = body.phone || id;
+  const rawPhone = body.phone || decodedJid;
   const phone = rawPhone.split("@")[0].replace(/\D/g, "");
 
   let client = null;
@@ -546,24 +548,34 @@ export async function PATCH(
     });
   }
 
-  if (!client && body.name) {
-    client = await prisma.client.create({
-      data: {
-        firstName: body.name,
-        lastName: "",
-        phone:
-          phone.length <= 12
-            ? phone.startsWith("7") || phone.startsWith("8")
-              ? `+7${phone.slice(-10)}`
-              : `+${phone}`
-            : `+${phone}`,
-      },
-    });
-  } else if (client && body.name) {
-    client = await prisma.client.update({
-      where: { id: client.id },
-      data: { firstName: body.name },
-    });
+  const formattedPhone =
+    phone && phone.length <= 12
+      ? phone.startsWith("7") || phone.startsWith("8")
+        ? `+7${phone.slice(-10)}`
+        : `+${phone}`
+      : `+${phone || "0000000000"}`;
+
+  if (!client) {
+    if (body.name || body.instagramUsername !== undefined) {
+      client = await prisma.client.create({
+        data: {
+          firstName: body.name || "Клиент",
+          lastName: "",
+          phone: formattedPhone,
+          instagramUsername: body.instagramUsername !== undefined ? (body.instagramUsername || null) : null,
+        },
+      });
+    }
+  } else {
+    const updateData: any = {};
+    if (body.name !== undefined) updateData.firstName = body.name;
+    if (body.instagramUsername !== undefined) updateData.instagramUsername = body.instagramUsername || null;
+    if (Object.keys(updateData).length > 0) {
+      client = await prisma.client.update({
+        where: { id: client.id },
+        data: updateData,
+      });
+    }
   }
 
   if (body.funnelStageId) {
@@ -597,8 +609,8 @@ export async function PATCH(
     } else {
       await prisma.lead.create({
         data: {
-          name: client?.firstName || (phone.length <= 12 ? `+${phone}` : "Клиент"),
-          phone: phone.length <= 12 ? `+${phone}` : "+" + phone,
+          name: client?.firstName || (phone.length <= 12 ? formattedPhone : "Клиент"),
+          phone: formattedPhone,
           source: "WHATSAPP",
           status: body.funnelStageId,
         },
@@ -606,5 +618,5 @@ export async function PATCH(
     }
   }
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({ success: true, client });
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getEvolutionServerUrl } from "@/lib/whatsapp";
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -21,7 +22,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "WhatsApp not configured" }, { status: 400 });
     }
 
-    const cleanServerUrl = wa.serverUrl.replace(/\/+$/, "");
+    const cleanServerUrl = getEvolutionServerUrl(wa.serverUrl);
 
     const payload = {
       key: {

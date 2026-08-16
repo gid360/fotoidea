@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getEvolutionServerUrl } from "@/lib/whatsapp";
 
 // In-memory cache for fast response and resilience against temporary network/Evo hiccups
 let cachedChats: any[] = [];
@@ -22,7 +23,7 @@ export async function GET() {
   if (wa && wa.provider === "EVOLUTION" && wa.serverUrl && wa.instanceName && wa.apiKey) {
     if (now - lastFetchTime > CACHE_TTL || cachedChats.length === 0) {
       try {
-        const cleanServerUrl = wa.serverUrl.replace(/\/+$/, "");
+        const cleanServerUrl = getEvolutionServerUrl(wa.serverUrl);
         const headers = { "Content-Type": "application/json", "apikey": wa.apiKey };
 
         const [chatsRes, contactsRes] = await Promise.all([

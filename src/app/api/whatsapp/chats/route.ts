@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getEvolutionServerUrl } from "@/lib/whatsapp";
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -13,7 +14,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ chats: [], message: "Evolution API not configured" });
   }
 
-  const cleanServerUrl = wa.serverUrl.replace(/\/+$/, "");
+  const cleanServerUrl = getEvolutionServerUrl(wa.serverUrl);
   const url = `${cleanServerUrl}/chat/findChats/${wa.instanceName}`;
 
   try {

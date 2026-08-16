@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { cn, formatDateTime } from "@/lib/utils";
+import { toast } from "@/lib/use-toast";
 import { Avatar } from "./Avatar";
 import { AvatarLightbox } from "./AvatarLightbox";
 import { ChannelBadge } from "./ChannelBadge";
@@ -71,23 +72,31 @@ export function ClientPanel({
     const handle = instaInput.trim().replace(/^@/, "");
     setSavingInsta(true);
     try {
+      let res: Response;
       if (client.dbClientId || (client.id && !client.id.includes("@"))) {
-        await fetch(`/api/clients/${client.dbClientId || client.id}`, {
+        res = await fetch(`/api/clients/${client.dbClientId || client.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ instagramUsername: handle || null }),
         });
       } else {
-        await fetch(`/api/conversations/${conversation.id}`, {
+        res = await fetch(`/api/conversations/${conversation.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ instagramUsername: handle || null, phone: client.phone }),
         });
       }
+      if (res && res.ok) {
+        client.instagramUsername = handle || null;
+        toast({ title: handle ? "Instagram аккаунт привязан" : "Instagram аккаунт отвязан" });
+      } else {
+        toast({ title: "Ошибка при сохранении", variant: "destructive" });
+      }
       setInstaModalOpen(false);
       if (onChanged) onChanged();
     } catch (e) {
       console.error(e);
+      toast({ title: "Ошибка связывания", variant: "destructive" });
     } finally {
       setSavingInsta(false);
     }

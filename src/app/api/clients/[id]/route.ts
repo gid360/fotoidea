@@ -109,21 +109,22 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { id } = await params;
   const body = await req.json();
 
+  const updateData: any = {};
+  if (body.firstName !== undefined) updateData.firstName = body.firstName;
+  if (body.lastName !== undefined) updateData.lastName = body.lastName;
+  if (body.phone !== undefined) updateData.phone = normalizePhone(body.phone);
+  if (body.email !== undefined) updateData.email = body.email || null;
+  if (body.birthDate !== undefined) updateData.birthDate = body.birthDate ? new Date(body.birthDate) : null;
+  if (body.note !== undefined) updateData.note = body.note || null;
+  if (body.photoUrl !== undefined) updateData.photoUrl = body.photoUrl || null;
+  if (body.instagramUsername !== undefined) updateData.instagramUsername = body.instagramUsername ? body.instagramUsername.replace(/^@/, "").trim() : null;
+  if (body.notifyAll !== undefined) updateData.notifyAll = body.notifyAll;
+  if (body.notifyReminders !== undefined) updateData.notifyReminders = body.notifyReminders;
+  if (body.notifyMarketing !== undefined) updateData.notifyMarketing = body.notifyMarketing;
+
   const client = await prisma.client.update({
     where: { id },
-    data: {
-      firstName: body.firstName,
-      lastName: body.lastName,
-      phone: body.phone ? normalizePhone(body.phone) : body.phone,
-      email: body.email || null,
-      birthDate: body.birthDate ? new Date(body.birthDate) : null,
-      note: body.note || null,
-      photoUrl: body.photoUrl,
-      instagramUsername: body.instagramUsername !== undefined ? (body.instagramUsername || null) : undefined,
-      notifyAll: body.notifyAll,
-      notifyReminders: body.notifyReminders,
-      notifyMarketing: body.notifyMarketing,
-    },
+    data: updateData,
   });
 
   await prisma.auditLog.create({

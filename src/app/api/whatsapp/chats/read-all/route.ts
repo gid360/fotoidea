@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getEvolutionServerUrl } from "@/lib/whatsapp";
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,7 +13,7 @@ export async function POST(req: NextRequest) {
 
     const wa = await prisma.whatsAppSession.findUnique({ where: { id: "singleton" } });
     if (wa && wa.provider === "EVOLUTION" && wa.serverUrl && wa.instanceName && wa.apiKey) {
-      const cleanServerUrl = wa.serverUrl.replace(/\/+$/, "");
+      const cleanServerUrl = getEvolutionServerUrl(wa.serverUrl);
       const headers = { "Content-Type": "application/json", "apikey": wa.apiKey };
 
       try {

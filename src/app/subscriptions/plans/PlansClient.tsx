@@ -13,12 +13,6 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn, formatMoney, formatDuration, PriceTier } from "@/lib/utils";
 import { toast } from "@/lib/use-toast";
-import { PageTabs } from "@/components/PageTabs";
-
-const SUB_TABS = [
-  { label: "Услуги", href: "/subscriptions/plans" },
-  { label: "Сертификаты", href: "/certificates" },
-];
 
 interface Hall { id: string; name: string; colorHex?: string }
 interface Direction { id: string; name: string; colorHex?: string }
@@ -266,7 +260,6 @@ export function PlansClient() {
 
   return (
     <div className="flex flex-col h-full">
-      <PageTabs tabs={SUB_TABS} />
       <div className="p-4 border-b bg-background shrink-0 space-y-3">
         <div className="flex items-center justify-between">
           <div>

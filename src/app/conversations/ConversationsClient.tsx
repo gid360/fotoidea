@@ -175,7 +175,7 @@ export function ConversationsClient() {
   const prefetchConversation = useCallback((id: string) => {
     qc.prefetchQuery({
       queryKey: ["conversation-detail", id],
-      queryFn: () => fetch(`/api/conversations/${id}`).then((r) => r.json()),
+      queryFn: () => fetch(`/api/conversations/${encodeURIComponent(id)}`).then((r) => r.json()),
       staleTime: 1000 * 60 * 3,
     });
   }, [qc]);
@@ -183,7 +183,7 @@ export function ConversationsClient() {
   // Fetch detail for selected conversation
   const { data: detail, refetch: refetchDetail, isLoading: isDetailLoading } = useQuery<ConversationDetailDto>({
     queryKey: ["conversation-detail", activeSelectedId],
-    queryFn: () => fetch(`/api/conversations/${activeSelectedId}`).then((r) => r.json()),
+    queryFn: () => fetch(`/api/conversations/${encodeURIComponent(activeSelectedId!)}`).then((r) => r.json()),
     enabled: !!activeSelectedId,
     staleTime: 2000,
     refetchInterval: 6000,
@@ -488,7 +488,7 @@ export function ConversationsClient() {
           mobileView !== "chat" ? "hidden md:flex" : "flex"
         )}
       >
-        {detail && detail.id === activeSelectedId ? (
+        {detail && (detail.id === activeSelectedId || decodeURIComponent(detail.id) === decodeURIComponent(activeSelectedId || "")) ? (
           <ChatPanel
             conversation={detail}
             onRefresh={refetchDetail}
@@ -512,7 +512,7 @@ export function ConversationsClient() {
       </div>
 
       {/* COLUMN 3: RIGHT CLIENT PANEL */}
-      {detail && detail.id === activeSelectedId && (
+      {detail && (detail.id === activeSelectedId || decodeURIComponent(detail.id) === decodeURIComponent(activeSelectedId || "")) && (
         <div
           className={cn(
             "h-full shrink-0",

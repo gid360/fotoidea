@@ -1,5 +1,25 @@
 import { prisma } from "@/lib/prisma";
 
+/**
+ * Utility helper to resolve the appropriate Evolution API server URL.
+ * When running inside Docker / Production, prefers the fast internal Docker network
+ * (http://evolution_api:8080 or EVOLUTION_INTERNAL_URL) over public internet hostnames
+ * to avoid network latency, NAT hairpinning, and SSL timeouts.
+ */
+export function getEvolutionServerUrl(configuredUrl?: string | null): string {
+  if (process.env.EVOLUTION_INTERNAL_URL) {
+    return process.env.EVOLUTION_INTERNAL_URL.replace(/\/+$/, "");
+  }
+  const clean = (configuredUrl || "").replace(/\/+$/, "");
+  if (
+    process.env.NODE_ENV === "production" &&
+    (clean.includes("wa.gid360.kz") || clean.includes("57.128.223.180") || clean.includes("localhost:8085"))
+  ) {
+    return "http://evolution_api:8080";
+  }
+  return clean || "http://evolution_api:8080";
+}
+
 export interface SendWhatsAppParams {
   phone: string;
   body: string;
@@ -25,7 +45,7 @@ export async function sendWhatsAppMessage(params: SendWhatsAppParams) {
 
     if (provider === "EVOLUTION" && wa.serverUrl && wa.instanceName && wa.apiKey) {
       try {
-        const cleanServerUrl = wa.serverUrl.replace(/\/+$/, "");
+        const cleanServerUrl = getEvolutionServerUrl(wa.serverUrl);
         const url = `${cleanServerUrl}/message/sendText/${wa.instanceName}`;
         const res = await fetch(url, {
           method: "POST",
@@ -99,7 +119,7 @@ export async function fetchEvolutionStatusAndQR() {
     return { state: "DISCONNECTED", qrCode: null, isOnline: false };
   }
 
-  const cleanServerUrl = wa.serverUrl.replace(/\/+$/, "");
+  const cleanServerUrl = getEvolutionServerUrl(wa.serverUrl);
   const headers = { "apikey": wa.apiKey };
 
   let isOnline = false;

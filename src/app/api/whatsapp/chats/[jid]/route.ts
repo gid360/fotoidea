@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getEvolutionServerUrl } from "@/lib/whatsapp";
 
 export async function GET(
   req: NextRequest,
@@ -18,7 +19,7 @@ export async function GET(
     return NextResponse.json({ messages: [] });
   }
 
-  const cleanServerUrl = wa.serverUrl.replace(/\/+$/, "");
+  const cleanServerUrl = getEvolutionServerUrl(wa.serverUrl);
   const url = `${cleanServerUrl}/chat/findMessages/${wa.instanceName}`;
   const headers = {
     "Content-Type": "application/json",
