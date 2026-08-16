@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import {
   User, Phone, Mail, Calendar, MessageCircle, Tag, Plus, Edit2, Check, X,
   Clock, Shield, Award, Camera, RefreshCw, AlertCircle, ShoppingBag, FileText, ChevronRight, CheckCircle2, ChevronDown, Trash2, ArrowLeft, ExternalLink,
-  Instagram, Link2,
+  Instagram, Link2, CheckSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,6 +46,57 @@ export function ClientPanel({
   const [instaModalOpen, setInstaModalOpen] = useState(false);
   const [instaInput, setInstaInput] = useState(client.instagramUsername || "");
   const [savingInsta, setSavingInsta] = useState(false);
+
+  // Task creation state
+  const [taskModalOpen, setTaskModalOpen] = useState(false);
+  const [taskTitle, setTaskTitle] = useState("");
+  const [taskCategory, setTaskCategory] = useState("general");
+  const [taskDueAt, setTaskDueAt] = useState(() => {
+    const d = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T12:00`;
+  });
+  const [taskDescription, setTaskDescription] = useState("");
+  const [taskCategories, setTaskCategories] = useState<{ id: string; name: string; color: string }[]>([]);
+  const [savingTask, setSavingTask] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/tasks/categories")
+      .then((r) => r.json())
+      .then((d) => setTaskCategories(d.categories || []))
+      .catch(console.error);
+  }, []);
+
+  async function handleCreateTask() {
+    if (!taskTitle.trim()) return;
+    setSavingTask(true);
+    try {
+      const res = await fetch("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: taskTitle.trim(),
+          description: taskDescription.trim() || null,
+          dueAt: taskDueAt ? new Date(taskDueAt).toISOString() : null,
+          category: taskCategory,
+          clientId: client.dbClientId || (client.id && !client.id.includes("@") ? client.id : null),
+        }),
+      });
+      if (res.ok) {
+        toast({ title: "Задача успешно создана" });
+        setTaskModalOpen(false);
+        setTaskTitle("");
+        setTaskDescription("");
+      } else {
+        toast({ title: "Ошибка создания задачи", variant: "destructive" });
+      }
+    } catch (e) {
+      console.error(e);
+      toast({ title: "Ошибка создания задачи", variant: "destructive" });
+    } finally {
+      setSavingTask(false);
+    }
+  }
 
   // Reset inputs when selected conversation or client changes
   useEffect(() => {
@@ -336,6 +387,119 @@ export function ClientPanel({
             </Button>
           )}
         </div>
+
+        {/* Task Button & Modal */}
+        <div className="pt-1">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setTaskModalOpen(true)}
+            className="w-full h-8 text-xs gap-1.5 border-violet-200 text-violet-700 hover:bg-violet-50 hover:border-violet-300 font-semibold cursor-pointer shadow-2xs"
+          >
+            <CheckSquare className="h-3.5 w-3.5 text-violet-600" />
+            <Plus className="h-3 w-3" />
+            Задача
+          </Button>
+        </div>
+
+        {/* Modal: Quick Create Task */}
+        {taskModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div className="bg-background border rounded-xl p-5 max-w-sm w-full space-y-4 shadow-xl animate-in fade-in-50 zoom-in-95">
+              <div className="flex items-center justify-between border-b pb-2">
+                <h3 className="font-bold text-sm flex items-center gap-2 text-violet-700">
+                  <CheckSquare className="h-4 w-4" /> Новая задача
+                </h3>
+                <button onClick={() => setTaskModalOpen(false)} className="text-muted-foreground hover:text-foreground cursor-pointer">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="p-2 rounded-lg bg-indigo-50/70 border border-indigo-100 flex items-center justify-between text-xs">
+                <div>
+                  <p className="font-bold text-indigo-900">{clientDisplayName(client)}</p>
+                  <p className="text-[11px] text-indigo-600 font-mono">{client.phone}</p>
+                </div>
+                <Badge variant="secondary" className="text-[10px]">Клиент привязан</Badge>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                <div>
+                  <Label className="text-xs font-semibold">Название задачи *</Label>
+                  <Input
+                    value={taskTitle}
+                    onChange={(e) => setTaskTitle(e.target.value)}
+                    placeholder="Что нужно сделать?"
+                    className="mt-1 text-xs h-8"
+                    autoFocus
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs font-semibold">Категория</Label>
+                    <select
+                      value={taskCategory}
+                      onChange={(e) => setTaskCategory(e.target.value)}
+                      className="mt-1 w-full rounded-md border border-slate-300 dark:border-slate-700 bg-background px-2.5 py-1.5 text-xs font-medium outline-none focus:border-violet-500 cursor-pointer h-8"
+                    >
+                      {taskCategories.map((cat) => (
+                        <option key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <Label className="text-xs font-semibold">Дедлайн</Label>
+                    <input
+                      type="datetime-local"
+                      value={taskDueAt}
+                      onChange={(e) => setTaskDueAt(e.target.value)}
+                      className="mt-1 w-full rounded-md border border-slate-300 dark:border-slate-700 bg-background px-2 py-1 text-xs font-medium outline-none focus:border-violet-500 cursor-pointer h-8"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-xs font-semibold">Описание (необязательно)</Label>
+                  <Textarea
+                    value={taskDescription}
+                    onChange={(e) => setTaskDescription(e.target.value)}
+                    placeholder="Детали, ссылки..."
+                    className="mt-1 text-xs min-h-[50px] resize-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-2 border-t">
+                <a
+                  href={`/tasks/new?clientId=${client.dbClientId || client.id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-[11px] text-violet-600 hover:underline font-medium flex items-center gap-1"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  Полная форма
+                </a>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setTaskModalOpen(false)} className="h-8 text-xs cursor-pointer">
+                    Отмена
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleCreateTask}
+                    disabled={savingTask || !taskTitle.trim()}
+                    className="h-8 text-xs bg-violet-600 hover:bg-violet-700 text-white cursor-pointer"
+                  >
+                    {savingTask ? "Создаем..." : "Создать"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Modal: Link with Instagram */}
         {instaModalOpen && (

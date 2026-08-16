@@ -16,9 +16,21 @@ export async function GET(req: NextRequest) {
     const to = url.searchParams.get("to");
     const userId = session.user.id;
 
+    const now = new Date();
     const where: any = {};
 
-    if (statusParam && ["PENDING", "DONE", "OVERDUE", "ARCHIVED"].includes(statusParam)) {
+    if (statusParam === "OVERDUE") {
+      where.OR = [
+        { status: "OVERDUE" },
+        { status: "PENDING", dueAt: { lt: now } },
+      ];
+    } else if (statusParam === "PENDING") {
+      where.status = "PENDING";
+      where.OR = [
+        { dueAt: null },
+        { dueAt: { gte: now } },
+      ];
+    } else if (statusParam && ["DONE", "ARCHIVED"].includes(statusParam)) {
       where.status = statusParam;
     } else {
       where.status = { not: "ARCHIVED" };
@@ -55,7 +67,6 @@ export async function GET(req: NextRequest) {
       orderBy: [{ createdAt: "desc" }],
     });
 
-    const now = new Date();
     const formatted = tasks.map((t) => {
       let currentStatus = t.status;
       if (t.status === "PENDING" && t.dueAt && new Date(t.dueAt) < now) {
@@ -111,14 +122,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Укажите название задачи" }, { status: 400 });
     }
 
-    const assignedIds: string[] = Array.isArray(body.assignedToIds) ? body.assignedToIds : [];
+    const assignedIds: string[] =
+      Array.isArray(body.assignedToIds) && body.assignedToIds.length > 0
+        ? body.assignedToIds
+        : [session.user.id];
+
+    let taskStatus = body.status || "PENDING";
+    const due = body.dueAt ? new Date(body.dueAt) : null;
+    if (taskStatus === "PENDING" && due && due < new Date()) {
+      taskStatus = "OVERDUE";
+    }
 
     const task = await prisma.task.create({
       data: {
         title: body.title.trim(),
         description: body.description || null,
-        dueAt: body.dueAt ? new Date(body.dueAt) : null,
-        status: body.status || "PENDING",
+        dueAt: due,
+        status: taskStatus,
         category: body.category || "general",
         attachments: Array.isArray(body.attachments) ? body.attachments : [],
         createdById: session.user.id,

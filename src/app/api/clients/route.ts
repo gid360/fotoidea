@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   if (session.user.role === "PHOTOGRAPHER") return NextResponse.json({ error: "Access denied" }, { status: 403 });
 
   const { searchParams } = new URL(req.url);
-  const q = searchParams.get("q")?.trim();
+  const q = (searchParams.get("q") || searchParams.get("search"))?.trim();
   const tag = searchParams.get("tag") as LoyaltyTag | null;
   const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
   const limit = Math.max(1, Math.min(500, parseInt(searchParams.get("limit") || "50", 10)));
@@ -20,14 +20,43 @@ export async function GET(req: NextRequest) {
   const sortBy = searchParams.get("sortBy") || "name";
   const sortOrder = (searchParams.get("sortOrder") || "asc") as "asc" | "desc";
 
+  const qDigits = q ? q.replace(/\D/g, "") : "";
+  const orConditions: any[] = [];
+
+  if (q) {
+    orConditions.push(
+      { firstName: { contains: q, mode: "insensitive" as const } },
+      { lastName: { contains: q, mode: "insensitive" as const } },
+      { phone: { contains: q } }
+    );
+
+    if (qDigits && qDigits.length >= 2) {
+      orConditions.push({ phone: { contains: qDigits } });
+    }
+
+    const words = q.split(/\s+/).filter(Boolean);
+    if (words.length > 1) {
+      orConditions.push({
+        AND: [
+          {
+            OR: [
+              { firstName: { contains: words[0], mode: "insensitive" as const } },
+              { lastName: { contains: words[0], mode: "insensitive" as const } },
+            ],
+          },
+          {
+            OR: [
+              { firstName: { contains: words[1], mode: "insensitive" as const } },
+              { lastName: { contains: words[1], mode: "insensitive" as const } },
+            ],
+          },
+        ],
+      });
+    }
+  }
+
   const where = {
-    ...(q ? {
-      OR: [
-        { firstName: { contains: q, mode: "insensitive" as const } },
-        { lastName: { contains: q, mode: "insensitive" as const } },
-        { phone: { contains: q } },
-      ],
-    } : {}),
+    ...(orConditions.length > 0 ? { OR: orConditions } : {}),
     ...(tag ? { loyaltyTag: tag } : {}),
   };
 

@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, useMemo, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import type { TaskDto, TaskCategoryDto, CommentItem, TreeCommentNode } from "./types";
 import {
   ArrowLeft, Check, Trash2, Calendar as CalendarIcon, Clock,
   Paperclip, Plus, Send, X, User, Users, CheckSquare, MessageSquare,
-  Upload, AlertCircle, FileText,
+  Upload, AlertCircle, FileText, Search, ChevronDown, CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -145,14 +146,14 @@ function CommentNodeView({
             <button
               type="button"
               onClick={() => onReply(node)}
-              className="text-[11px] text-violet-600 hover:underline font-semibold"
+              className="text-[11px] text-violet-600 hover:underline font-semibold cursor-pointer"
             >
               Ответить
             </button>
             <button
               type="button"
               onClick={() => onDelete(node.id)}
-              className="text-slate-400 hover:text-red-600 p-1"
+              className="text-slate-400 hover:text-red-600 p-1 cursor-pointer"
               title="Удалить"
             >
               <Trash2 className="h-3 w-3" />
@@ -182,6 +183,8 @@ function CommentNodeView({
 
 export function TaskFormPage({ taskId }: { taskId?: string }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { data: session } = useSession();
   const isEditing = Boolean(taskId);
 
   const [loading, setLoading] = useState(isEditing);
@@ -199,6 +202,12 @@ export function TaskFormPage({ taskId }: { taskId?: string }) {
   const [users, setUsers] = useState<AssignableUser[]>([]);
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [clientSearch, setClientSearch] = useState("");
+  const [searchingClients, setSearchingClients] = useState(false);
+
+  // Assignee dropdown & search
+  const [assigneeSearch, setAssigneeSearch] = useState("");
+  const [assigneeDropdownOpen, setAssigneeDropdownOpen] = useState(false);
+  const assigneeDropdownRef = useRef<HTMLDivElement>(null);
 
   // Comments
   const [comments, setComments] = useState<CommentItem[]>([]);
@@ -206,8 +215,79 @@ export function TaskFormPage({ taskId }: { taskId?: string }) {
   const [replyingTo, setReplyingTo] = useState<TreeCommentNode | null>(null);
   const [sendingComment, setSendingComment] = useState(false);
 
+  // Click outside to close assignee dropdown
   useEffect(() => {
-    // Load categories, users, clients
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        assigneeDropdownRef.current &&
+        !assigneeDropdownRef.current.contains(event.target as Node)
+      ) {
+        setAssigneeDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Pre-fill assignee with creator by default when creating new task
+  useEffect(() => {
+    if (!isEditing && session?.user?.id && assignedToIds.length === 0) {
+      setAssignedToIds([session.user.id]);
+    }
+  }, [isEditing, session?.user?.id, assignedToIds.length]);
+
+  // Pre-fill clientId from URL query parameter
+  useEffect(() => {
+    const cid = searchParams.get("clientId");
+    if (cid && !clientId) {
+      setClientId(cid);
+      fetch(`/api/clients/${cid}`)
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.client) {
+            const opt: ClientOption = {
+              id: d.client.id,
+              name: `${d.client.firstName} ${d.client.lastName}`.trim(),
+              phone: d.client.phone,
+            };
+            setClients((prev) => [opt, ...prev.filter((p) => p.id !== opt.id)]);
+          }
+        })
+        .catch(console.error);
+    }
+  }, [searchParams, clientId]);
+
+  // Dynamic server-side client search
+  useEffect(() => {
+    if (!clientSearch.trim()) return;
+    const timer = setTimeout(() => {
+      setSearchingClients(true);
+      fetch(`/api/clients?q=${encodeURIComponent(clientSearch.trim())}&limit=30`)
+        .then((r) => r.json())
+        .then((d) => {
+          const list = (d.clients || []).map((c: any) => ({
+            id: c.id,
+            name: `${c.firstName} ${c.lastName}`.trim(),
+            phone: c.phone,
+          }));
+          setClients((prev) => {
+            const map = new Map<string, ClientOption>();
+            list.forEach((item: ClientOption) => map.set(item.id, item));
+            prev.forEach((item: ClientOption) => {
+              if (!map.has(item.id)) map.set(item.id, item);
+            });
+            return Array.from(map.values());
+          });
+        })
+        .catch(console.error)
+        .finally(() => setSearchingClients(false));
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [clientSearch]);
+
+  useEffect(() => {
+    // Load categories, users, initial clients
     fetch("/api/tasks/categories")
       .then((r) => r.json())
       .then((d) => setCategories(d.categories || []))
@@ -226,7 +306,14 @@ export function TaskFormPage({ taskId }: { taskId?: string }) {
           name: `${c.firstName} ${c.lastName}`.trim(),
           phone: c.phone,
         }));
-        setClients(list);
+        setClients((prev) => {
+          const map = new Map<string, ClientOption>();
+          list.forEach((item: ClientOption) => map.set(item.id, item));
+          prev.forEach((item: ClientOption) => {
+            if (!map.has(item.id)) map.set(item.id, item);
+          });
+          return Array.from(map.values());
+        });
       })
       .catch(console.error);
 
@@ -243,6 +330,14 @@ export function TaskFormPage({ taskId }: { taskId?: string }) {
             setAssignedToIds(d.task.assignedToIds || []);
             setClientId(d.task.clientId || null);
             setAttachments(d.task.attachments || []);
+            if (d.task.client) {
+              const opt: ClientOption = {
+                id: d.task.client.id,
+                name: d.task.client.name,
+                phone: d.task.client.phone,
+              };
+              setClients((prev) => [opt, ...prev.filter((p) => p.id !== opt.id)]);
+            }
           }
         })
         .catch(console.error)
@@ -291,13 +386,19 @@ export function TaskFormPage({ taskId }: { taskId?: string }) {
 
     setSaving(true);
     try {
+      // Auto-compute overdue status
+      let finalStatus = status;
+      if (status === "PENDING" && dueAt && new Date(dueAt) < new Date()) {
+        finalStatus = "OVERDUE";
+      }
+
       const payload = {
         title: title.trim(),
         description,
         dueAt: dueAt ? new Date(dueAt).toISOString() : null,
         category,
-        status,
-        assignedToIds,
+        status: finalStatus,
+        assignedToIds: assignedToIds.length > 0 ? assignedToIds : (session?.user?.id ? [session.user.id] : []),
         clientId,
         attachments,
       };
@@ -392,10 +493,14 @@ export function TaskFormPage({ taskId }: { taskId?: string }) {
   }
 
   const filteredClients = useMemo(() => {
-    if (!clientSearch.trim()) return clients.slice(0, 10);
+    if (!clientSearch.trim()) return clients.slice(0, 15);
     const q = clientSearch.toLowerCase();
+    const qDigits = q.replace(/\D/g, "");
     return clients.filter(
-      (c) => c.name.toLowerCase().includes(q) || c.phone.includes(q)
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        c.phone.includes(q) ||
+        (qDigits.length >= 2 && c.phone.replace(/\D/g, "").includes(qDigits))
     );
   }, [clients, clientSearch]);
 
@@ -403,6 +508,26 @@ export function TaskFormPage({ taskId }: { taskId?: string }) {
     () => clients.find((c) => c.id === clientId),
     [clients, clientId]
   );
+
+  const filteredUsers = useMemo(() => {
+    if (!assigneeSearch.trim()) return users;
+    const q = assigneeSearch.toLowerCase();
+    return users.filter(
+      (u) =>
+        u.name.toLowerCase().includes(q) ||
+        (u.role && u.role.toLowerCase().includes(q))
+    );
+  }, [users, assigneeSearch]);
+
+  const selectedUsers = useMemo(
+    () => users.filter((u) => assignedToIds.includes(u.id)),
+    [users, assignedToIds]
+  );
+
+  const isCurrentDueOverdue = useMemo(() => {
+    if (!dueAt || status === "DONE" || status === "ARCHIVED") return false;
+    return new Date(dueAt) < new Date();
+  }, [dueAt, status]);
 
   if (loading) {
     return (
@@ -434,7 +559,7 @@ export function TaskFormPage({ taskId }: { taskId?: string }) {
               variant="outline"
               size="sm"
               onClick={handleDelete}
-              className="h-8 text-xs text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+              className="h-8 text-xs text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 cursor-pointer"
             >
               <Trash2 className="h-3.5 w-3.5 mr-1" />
               Удалить
@@ -444,7 +569,7 @@ export function TaskFormPage({ taskId }: { taskId?: string }) {
             size="sm"
             onClick={handleSave}
             disabled={saving || !title.trim()}
-            className="h-8 px-4 text-xs bg-violet-600 hover:bg-violet-700 text-white font-semibold shadow-xs"
+            className="h-8 px-4 text-xs bg-violet-600 hover:bg-violet-700 text-white font-semibold shadow-xs cursor-pointer"
           >
             {saving ? "Сохранение..." : "Сохранить"}
           </Button>
@@ -489,15 +614,27 @@ export function TaskFormPage({ taskId }: { taskId?: string }) {
 
             {/* Status */}
             <div>
-              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Статус
+              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                <span>Статус</span>
+                {isCurrentDueOverdue && (
+                  <span className="text-[10px] font-bold text-red-600 animate-pulse">
+                    Просрочено по дедлайну
+                  </span>
+                )}
               </Label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as any)}
-                className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-900 dark:text-slate-100 outline-none focus:border-violet-500 cursor-pointer shadow-2xs h-9"
+                className={cn(
+                  "mt-1 w-full rounded-lg border px-3 py-2 text-xs font-semibold outline-none focus:border-violet-500 cursor-pointer shadow-2xs h-9",
+                  status === "OVERDUE" || isCurrentDueOverdue
+                    ? "border-red-300 bg-red-50/50 text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300"
+                    : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
+                )}
               >
-                <option value="PENDING">К выполнению (В работе)</option>
+                <option value="PENDING">
+                  {isCurrentDueOverdue ? "К выполнению (Просрочено по времени)" : "К выполнению (В работе)"}
+                </option>
                 <option value="DONE">Выполнено</option>
                 <option value="OVERDUE">Просрочено</option>
                 <option value="ARCHIVED">В архиве</option>
@@ -516,39 +653,121 @@ export function TaskFormPage({ taskId }: { taskId?: string }) {
           </div>
         </div>
 
-        {/* Assignees */}
-        <div className="space-y-2 border-t pt-4">
+        {/* Searchable Assignee Selector */}
+        <div className="space-y-2 border-t pt-4" ref={assigneeDropdownRef}>
           <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
             <Users className="h-3.5 w-3.5 text-violet-600" />
             Исполнители
           </Label>
-          <div className="flex flex-wrap gap-2 pt-1">
-            {users.map((u) => {
-              const isSelected = assignedToIds.includes(u.id);
-              return (
-                <button
-                  type="button"
+
+          <div className="space-y-2 max-w-xl">
+            {/* Selected Assignees Chips */}
+            <div className="flex flex-wrap gap-1.5 items-center">
+              {selectedUsers.map((u) => (
+                <span
                   key={u.id}
-                  onClick={() => {
-                    setAssignedToIds((prev) =>
-                      prev.includes(u.id)
-                        ? prev.filter((id) => id !== u.id)
-                        : [...prev, u.id]
-                    );
-                  }}
-                  className={cn(
-                    "px-3 py-1.5 rounded-lg text-xs font-semibold border flex items-center gap-1.5 transition-all cursor-pointer",
-                    isSelected
-                      ? "bg-violet-600 text-white border-violet-600 shadow-2xs"
-                      : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-300"
-                  )}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-violet-100 text-violet-800 dark:bg-violet-950/70 dark:text-violet-300 border border-violet-200 dark:border-violet-800 shadow-2xs"
                 >
-                  <User className="h-3.5 w-3.5 opacity-70" />
+                  <User className="h-3 w-3 opacity-70" />
                   {u.name}
-                  {isSelected && <Check className="h-3.5 w-3.5 ml-1" />}
-                </button>
-              );
-            })}
+                  <button
+                    type="button"
+                    onClick={() => setAssignedToIds((prev) => prev.filter((id) => id !== u.id))}
+                    className="hover:text-red-600 p-0.5 rounded-full cursor-pointer ml-0.5"
+                    title="Удалить"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setAssigneeDropdownOpen(!assigneeDropdownOpen)}
+                className="h-7 text-xs border-dashed border-slate-300 hover:border-violet-500 hover:bg-violet-50/50 text-slate-700 dark:text-slate-300 flex items-center gap-1 cursor-pointer"
+              >
+                <Plus className="h-3 w-3" />
+                {selectedUsers.length === 0 ? "Назначить исполнителя" : "Добавить"}
+                <ChevronDown className="h-3 w-3 ml-0.5 opacity-50" />
+              </Button>
+            </div>
+
+            {/* Assignee Search Dropdown Popover */}
+            {assigneeDropdownOpen && (
+              <div className="border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 shadow-lg p-2.5 space-y-2 z-30 relative animate-in fade-in-50 zoom-in-95">
+                <div className="relative">
+                  <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    placeholder="Поиск сотрудника по имени..."
+                    value={assigneeSearch}
+                    onChange={(e) => setAssigneeSearch(e.target.value)}
+                    className="h-8 pl-8 text-xs"
+                    autoFocus
+                  />
+                  {assigneeSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setAssigneeSearch("")}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="max-h-48 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
+                  {filteredUsers.length === 0 ? (
+                    <p className="p-3 text-center text-xs text-slate-400">Сотрудник не найден</p>
+                  ) : (
+                    filteredUsers.map((u) => {
+                      const isSelected = assignedToIds.includes(u.id);
+                      return (
+                        <div
+                          key={u.id}
+                          onClick={() => {
+                            setAssignedToIds((prev) =>
+                              prev.includes(u.id)
+                                ? prev.filter((id) => id !== u.id)
+                                : [...prev, u.id]
+                            );
+                          }}
+                          className={cn(
+                            "p-2 text-xs rounded-lg flex items-center justify-between cursor-pointer transition-colors",
+                            isSelected
+                              ? "bg-violet-50 text-violet-900 font-semibold dark:bg-violet-950/40 dark:text-violet-200"
+                              : "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
+                          )}
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className="h-6 w-6 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center font-bold text-[10px] text-slate-600">
+                              {u.name.charAt(0)}
+                            </div>
+                            <div>
+                              <p className="font-medium leading-tight">{u.name}</p>
+                              {u.role && (
+                                <p className="text-[10px] text-slate-400 capitalize">{u.role}</p>
+                              )}
+                            </div>
+                          </div>
+                          <div
+                            className={cn(
+                              "h-4 w-4 rounded border flex items-center justify-center transition-colors",
+                              isSelected
+                                ? "bg-violet-600 border-violet-600 text-white"
+                                : "border-slate-300 dark:border-slate-600"
+                            )}
+                          >
+                            {isSelected && <Check className="h-3 w-3" />}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -559,47 +778,86 @@ export function TaskFormPage({ taskId }: { taskId?: string }) {
             Привязать клиента
           </Label>
           {selectedClient ? (
-            <div className="flex items-center justify-between p-2.5 rounded-lg border border-indigo-200 bg-indigo-50/70 dark:bg-indigo-950/30 max-w-sm">
-              <div>
-                <p className="text-xs font-bold text-indigo-900 dark:text-indigo-200">
-                  {selectedClient.name}
-                </p>
-                <p className="text-[11px] text-indigo-600 dark:text-indigo-400 font-mono">
-                  {selectedClient.phone}
-                </p>
+            <div className="flex items-center justify-between p-2.5 rounded-lg border border-indigo-200 bg-indigo-50/70 dark:bg-indigo-950/30 max-w-md">
+              <div className="flex items-center gap-2.5">
+                <div className="h-8 w-8 rounded-full bg-indigo-200 text-indigo-800 flex items-center justify-center font-bold text-xs">
+                  {selectedClient.name.charAt(0)}
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-indigo-900 dark:text-indigo-200">
+                    {selectedClient.name}
+                  </p>
+                  <p className="text-[11px] text-indigo-600 dark:text-indigo-400 font-mono">
+                    {selectedClient.phone}
+                  </p>
+                </div>
               </div>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-6 w-6 text-indigo-700 hover:text-indigo-900"
-                onClick={() => setClientId(null)}
+                className="h-7 w-7 text-indigo-700 hover:text-indigo-900 cursor-pointer"
+                onClick={() => {
+                  setClientId(null);
+                  setClientSearch("");
+                }}
+                title="Отвязать клиента"
               >
                 <X className="h-3.5 w-3.5" />
               </Button>
             </div>
           ) : (
             <div className="space-y-2 max-w-md">
-              <Input
-                placeholder="Поиск клиента по имени или номеру…"
-                value={clientSearch}
-                onChange={(e) => setClientSearch(e.target.value)}
-                className="text-xs h-8"
-              />
+              <div className="relative">
+                <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Input
+                  placeholder="Поиск по имени (например, Рома) или номеру (4 цифры)…"
+                  value={clientSearch}
+                  onChange={(e) => setClientSearch(e.target.value)}
+                  className="text-xs h-9 pl-8 pr-8"
+                />
+                {clientSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setClientSearch("")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+
+              {searchingClients && (
+                <p className="text-[11px] text-slate-400 px-1">Поиск в базе клиентов…</p>
+              )}
+
               {clientSearch && (
-                <div className="border rounded-lg max-h-36 overflow-y-auto divide-y bg-white dark:bg-slate-900 shadow-sm">
-                  {filteredClients.map((c) => (
-                    <div
-                      key={c.id}
-                      onClick={() => {
-                        setClientId(c.id);
-                        setClientSearch("");
-                      }}
-                      className="p-2 text-xs hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer flex items-center justify-between"
-                    >
-                      <span className="font-semibold">{c.name}</span>
-                      <span className="text-slate-400 font-mono">{c.phone}</span>
-                    </div>
-                  ))}
+                <div className="border border-slate-200 dark:border-slate-800 rounded-lg max-h-48 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900 shadow-md">
+                  {filteredClients.length === 0 ? (
+                    <p className="p-3 text-center text-xs text-slate-400">Клиент не найден</p>
+                  ) : (
+                    filteredClients.map((c) => (
+                      <div
+                        key={c.id}
+                        onClick={() => {
+                          setClientId(c.id);
+                          setClientSearch("");
+                        }}
+                        className="p-2.5 text-xs hover:bg-indigo-50 dark:hover:bg-slate-800 cursor-pointer flex items-center justify-between transition-colors"
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className="h-6 w-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-bold text-[10px] text-indigo-700">
+                            {c.name.charAt(0)}
+                          </div>
+                          <span className="font-semibold text-slate-800 dark:text-slate-200">
+                            {c.name}
+                          </span>
+                        </div>
+                        <span className="text-slate-500 dark:text-slate-400 font-mono text-[11px]">
+                          {c.phone}
+                        </span>
+                      </div>
+                    ))
+                  )}
                 </div>
               )}
             </div>
@@ -649,7 +907,7 @@ export function TaskFormPage({ taskId }: { taskId?: string }) {
                   href={att.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="font-medium text-violet-600 hover:underline truncate max-w-[200px]"
+                  className="font-medium text-violet-600 hover:underline max-w-[200px] truncate"
                 >
                   {att.name}
                 </a>
@@ -658,73 +916,67 @@ export function TaskFormPage({ taskId }: { taskId?: string }) {
                   onClick={() =>
                     setAttachments((prev) => prev.filter((_, i) => i !== idx))
                   }
-                  className="text-slate-400 hover:text-red-600 p-0.5"
-                  title="Удалить файл"
+                  className="text-slate-400 hover:text-red-600 cursor-pointer"
                 >
-                  <X className="h-3.5 w-3.5" />
+                  <X className="h-3 w-3" />
                 </button>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Discussion / Comments (when editing) */}
-        {isEditing && (
+        {/* Comments Section (Only for existing tasks) */}
+        {isEditing && taskId && (
           <div className="space-y-4 border-t pt-6">
-            <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100 flex items-center gap-2">
+            <Label className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
               <MessageSquare className="h-4 w-4 text-violet-600" />
-              Обсуждение задачи ({comments.length})
-            </h3>
+              Комментарии ({comments.length})
+            </Label>
 
-            {/* Replying banner */}
-            {replyingTo && (
-              <div className="flex items-center justify-between p-2 rounded-lg bg-violet-50 dark:bg-violet-950/40 border border-violet-200 text-xs">
-                <span className="text-violet-800 dark:text-violet-200 font-medium">
-                  Ответ на комментарий <strong>{replyingTo.authorName}</strong>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setReplyingTo(null)}
-                  className="text-violet-500 hover:text-violet-700"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            )}
-
-            {/* Add comment box */}
-            <div className="flex gap-2">
-              <Textarea
-                value={commentText}
-                onChange={(e) => setCommentText(e.target.value)}
-                placeholder="Напишите комментарий..."
-                className="text-xs min-h-[60px]"
-              />
-              <Button
-                onClick={handleSendComment}
-                disabled={sendingComment || !commentText.trim()}
-                className="self-end h-9 px-4 bg-violet-600 hover:bg-violet-700 text-white font-semibold text-xs shrink-0"
-              >
-                <Send className="h-3.5 w-3.5 mr-1" />
-                Отправить
-              </Button>
-            </div>
-
-            {/* Comment list */}
-            <div className="space-y-3 pt-2">
+            {/* Comments tree */}
+            <div className="space-y-3">
               {commentTree.map((node) => (
                 <CommentNodeView
                   key={node.id}
                   node={node}
-                  onReply={setReplyingTo}
+                  onReply={(target) => setReplyingTo(target)}
                   onDelete={handleDeleteComment}
                 />
               ))}
-              {comments.length === 0 && (
-                <p className="text-xs text-slate-400 text-center py-4">
-                  Комментариев пока нет. Напишите первый комментарий!
-                </p>
+            </div>
+
+            {/* Comment input form */}
+            <div className="space-y-2 pt-2">
+              {replyingTo && (
+                <div className="flex items-center justify-between p-2 rounded-lg bg-violet-50 dark:bg-violet-950/40 text-xs text-violet-800 dark:text-violet-300">
+                  <span>
+                    Ответ на комментарий <b>{replyingTo.authorName}</b>: «
+                    {replyingTo.text.slice(0, 40)}…»
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setReplyingTo(null)}
+                    className="text-violet-600 hover:text-violet-900 cursor-pointer"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               )}
+              <div className="flex gap-2">
+                <Textarea
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  placeholder="Написать комментарий..."
+                  className="text-xs min-h-[60px]"
+                />
+                <Button
+                  onClick={handleSendComment}
+                  disabled={sendingComment || !commentText.trim()}
+                  className="h-auto px-4 bg-violet-600 hover:bg-violet-700 text-white cursor-pointer"
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </div>
         )}
