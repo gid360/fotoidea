@@ -690,10 +690,10 @@ export function ChatPanel({
                     target="_blank"
                     rel="noreferrer"
                     onClick={(e) => e.stopPropagation()}
-                    className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full bg-emerald-50 hover:bg-emerald-100 hover:text-emerald-900 border border-emerald-200 font-mono text-emerald-700 transition-all flex items-center gap-1 cursor-pointer font-medium"
-                    title="Клиент сохранён в базе данных · Открыть карточку"
+                    className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 border border-slate-200 font-mono text-slate-700 transition-all flex items-center gap-1 cursor-pointer font-medium"
+                    title="Открыть карточку клиента в базе"
                   >
-                    <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                    <User className="h-3 w-3 text-slate-500 hover:text-indigo-600" />
                     {formatPhonePretty(client.phone)}
                   </a>
                 ) : (
@@ -703,7 +703,7 @@ export function ChatPanel({
                     rel="noreferrer"
                     onClick={(e) => e.stopPropagation()}
                     className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full bg-slate-100 hover:bg-slate-200 font-mono text-slate-600 transition-colors cursor-pointer"
-                    title="Поиск клиента в базе (клиент не сохранён)"
+                    title="Поиск клиента в базе"
                   >
                     {formatPhonePretty(client.phone)}
                   </a>

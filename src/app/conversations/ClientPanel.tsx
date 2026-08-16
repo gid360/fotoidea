@@ -297,12 +297,12 @@ export function ClientPanel({
                 href={`/clients/${client.dbClientId || client.id}`}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1.5 text-emerald-700 hover:text-emerald-900 hover:underline font-mono text-xs mt-0.5 font-medium cursor-pointer"
-                title="Открыть карточку клиента в базе (клиент сохранён)"
+                className="inline-flex items-center gap-1.5 text-indigo-600 hover:text-indigo-800 hover:underline font-mono text-xs mt-0.5 font-medium cursor-pointer"
+                title="Открыть карточку клиента в базе"
               >
-                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                <Phone className="h-3 w-3 text-slate-400" />
                 {formatPhonePretty(client.phone)}
-                <ExternalLink className="h-3 w-3 text-emerald-500" />
+                <ExternalLink className="h-3 w-3 text-indigo-400" />
               </a>
             ) : (
               <a
@@ -310,7 +310,7 @@ export function ClientPanel({
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-1.5 text-slate-500 hover:text-indigo-600 hover:underline font-mono text-xs mt-0.5 cursor-pointer"
-                title="Поиск клиента в базе (клиент не сохранён)"
+                title="Поиск клиента в базе"
               >
                 <Phone className="h-3 w-3 text-slate-400" />
                 {formatPhonePretty(client.phone)}
