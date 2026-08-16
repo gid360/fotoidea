@@ -83,15 +83,47 @@ export async function GET(
         targetJids.add(`${phone}@s.whatsapp.net`);
       }
 
-      // 2. Fetch messages for ALL candidate JIDs in parallel
-      const jidList = Array.from(targetJids);
+      // 2. Fetch messages for ALL candidate queries in parallel (remoteJid + remoteJidAlt)
+      const queries: any[] = [];
+      const queriedKeys = new Set<string>();
+
+      for (const jid of targetJids) {
+        const key = `remoteJid:${jid}`;
+        if (!queriedKeys.has(key)) {
+          queriedKeys.add(key);
+          queries.push({ key: { remoteJid: jid } });
+        }
+      }
+
+      const pDigits = resolvedPhone || phone;
+      if (pDigits && pDigits.length >= 10) {
+        const last10 = pDigits.slice(-10);
+        const candidates = [
+          `${pDigits}@s.whatsapp.net`,
+          `7${last10}@s.whatsapp.net`,
+          `8${last10}@s.whatsapp.net`,
+        ];
+        for (const cJid of candidates) {
+          const keyJid = `remoteJid:${cJid}`;
+          if (!queriedKeys.has(keyJid)) {
+            queriedKeys.add(keyJid);
+            queries.push({ key: { remoteJid: cJid } });
+          }
+          const keyAlt = `remoteJidAlt:${cJid}`;
+          if (!queriedKeys.has(keyAlt)) {
+            queriedKeys.add(keyAlt);
+            queries.push({ key: { remoteJidAlt: cJid } });
+          }
+        }
+      }
+
       const msgFetchResults = await Promise.all(
-        jidList.map(async (jid) => {
+        queries.map(async (where) => {
           try {
             const res = await fetch(`${cleanServerUrl}/chat/findMessages/${wa.instanceName}`, {
               method: "POST",
               headers,
-              body: JSON.stringify({ where: { key: { remoteJid: jid } }, limit: 100 }),
+              body: JSON.stringify({ where, limit: 100 }),
               signal: AbortSignal.timeout(8000),
             });
             if (res.ok) {
@@ -99,13 +131,15 @@ export async function GET(
               return data?.messages?.records || data?.records || data?.messages || (Array.isArray(data) ? data : []);
             }
           } catch (err) {
-            console.error("Error fetching messages for JID:", jid, err);
+            console.error("Error fetching messages for query:", where, err);
           }
           return [];
         })
       );
 
       const rawMsgsMap = new Map<string, any>();
+      const extraJidsToQuery: string[] = [];
+
       for (const list of msgFetchResults) {
         if (Array.isArray(list)) {
           for (const m of list) {
@@ -113,9 +147,44 @@ export async function GET(
             if (mId && !rawMsgsMap.has(mId)) {
               rawMsgsMap.set(mId, m);
             }
+            if (m.key?.remoteJid && !queriedKeys.has(`remoteJid:${m.key.remoteJid}`)) {
+              queriedKeys.add(`remoteJid:${m.key.remoteJid}`);
+              extraJidsToQuery.push(m.key.remoteJid);
+            }
           }
         }
       }
+
+      if (extraJidsToQuery.length > 0) {
+        const extraResults = await Promise.all(
+          extraJidsToQuery.map(async (jid) => {
+            try {
+              const res = await fetch(`${cleanServerUrl}/chat/findMessages/${wa.instanceName}`, {
+                method: "POST",
+                headers,
+                body: JSON.stringify({ where: { key: { remoteJid: jid } }, limit: 100 }),
+                signal: AbortSignal.timeout(8000),
+              });
+              if (res.ok) {
+                const data = await res.json();
+                return data?.messages?.records || data?.records || data?.messages || (Array.isArray(data) ? data : []);
+              }
+            } catch (err) {}
+            return [];
+          })
+        );
+        for (const list of extraResults) {
+          if (Array.isArray(list)) {
+            for (const m of list) {
+              const mId = m.key?.id || m.id;
+              if (mId && !rawMsgsMap.has(mId)) {
+                rawMsgsMap.set(mId, m);
+              }
+            }
+          }
+        }
+      }
+
       const rawMsgs = Array.from(rawMsgsMap.values());
 
       // Extract phone number and pushName if found in message keys

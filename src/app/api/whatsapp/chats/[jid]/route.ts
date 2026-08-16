@@ -34,42 +34,95 @@ export async function GET(
   const phone = targetJid.split("@")[0].replace(/\D/g, "");
 
   try {
-    // 1. First try targetJid
-    let res = await fetch(url, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        where: { key: { remoteJid: targetJid } },
-        limit: 50,
-      }),
-      signal: AbortSignal.timeout(8000),
-    });
+    const queries: any[] = [{ key: { remoteJid: targetJid } }];
+    const queriedKeys = new Set<string>([`remoteJid:${targetJid}`]);
 
-    let rawMsgs: any[] = [];
-    if (res.ok) {
-      const data = await res.json();
-      rawMsgs = data?.messages?.records || data?.records || data?.messages || (Array.isArray(data) ? data : []);
-    }
-
-    // 2. If no messages found and phone is available, fallback to phone@s.whatsapp.net
-    if ((!Array.isArray(rawMsgs) || rawMsgs.length === 0) && phone && phone.length <= 12) {
-      const altJid = `${phone}@s.whatsapp.net`;
-      if (altJid !== targetJid) {
-        res = await fetch(url, {
-          method: "POST",
-          headers,
-          body: JSON.stringify({
-            where: { key: { remoteJid: altJid } },
-            limit: 50,
-          }),
-          signal: AbortSignal.timeout(8000),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          rawMsgs = data?.messages?.records || data?.records || data?.messages || (Array.isArray(data) ? data : []);
+    if (phone && phone.length >= 10) {
+      const last10 = phone.slice(-10);
+      const candidates = [
+        `${phone}@s.whatsapp.net`,
+        `7${last10}@s.whatsapp.net`,
+        `8${last10}@s.whatsapp.net`,
+      ];
+      for (const cJid of candidates) {
+        if (!queriedKeys.has(`remoteJid:${cJid}`)) {
+          queriedKeys.add(`remoteJid:${cJid}`);
+          queries.push({ key: { remoteJid: cJid } });
+        }
+        if (!queriedKeys.has(`remoteJidAlt:${cJid}`)) {
+          queriedKeys.add(`remoteJidAlt:${cJid}`);
+          queries.push({ key: { remoteJidAlt: cJid } });
         }
       }
     }
+
+    const fetchResults = await Promise.all(
+      queries.map(async (where) => {
+        try {
+          const res = await fetch(url, {
+            method: "POST",
+            headers,
+            body: JSON.stringify({ where, limit: 100 }),
+            signal: AbortSignal.timeout(8000),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            return data?.messages?.records || data?.records || data?.messages || (Array.isArray(data) ? data : []);
+          }
+        } catch (err) {}
+        return [];
+      })
+    );
+
+    const rawMsgsMap = new Map<string, any>();
+    const extraJids: string[] = [];
+
+    for (const list of fetchResults) {
+      if (Array.isArray(list)) {
+        for (const m of list) {
+          const mId = m.key?.id || m.id;
+          if (mId && !rawMsgsMap.has(mId)) {
+            rawMsgsMap.set(mId, m);
+          }
+          if (m.key?.remoteJid && !queriedKeys.has(`remoteJid:${m.key.remoteJid}`)) {
+            queriedKeys.add(`remoteJid:${m.key.remoteJid}`);
+            extraJids.push(m.key.remoteJid);
+          }
+        }
+      }
+    }
+
+    if (extraJids.length > 0) {
+      const extraResults = await Promise.all(
+        extraJids.map(async (jid) => {
+          try {
+            const res = await fetch(url, {
+              method: "POST",
+              headers,
+              body: JSON.stringify({ where: { key: { remoteJid: jid } }, limit: 100 }),
+              signal: AbortSignal.timeout(8000),
+            });
+            if (res.ok) {
+              const data = await res.json();
+              return data?.messages?.records || data?.records || data?.messages || (Array.isArray(data) ? data : []);
+            }
+          } catch (err) {}
+          return [];
+        })
+      );
+      for (const list of extraResults) {
+        if (Array.isArray(list)) {
+          for (const m of list) {
+            const mId = m.key?.id || m.id;
+            if (mId && !rawMsgsMap.has(mId)) {
+              rawMsgsMap.set(mId, m);
+            }
+          }
+        }
+      }
+    }
+
+    const rawMsgs = Array.from(rawMsgsMap.values());
 
     if (!Array.isArray(rawMsgs)) {
       return NextResponse.json({ messages: [] });
