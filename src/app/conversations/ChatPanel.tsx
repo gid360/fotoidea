@@ -998,6 +998,10 @@ export function ChatPanel({
                       <p>
                         <MessageText text={m.text} isOutgoing={isOutgoing} />
                       </p>
+                    ) : m.isEdited ? (
+                      <p className="italic opacity-80 text-xs font-normal">
+                        [Изменённое сообщение]
+                      </p>
                     ) : (
                       !m.mediaUrl && <p className="italic text-slate-400 font-medium">[Сообщение]</p>
                     )}
