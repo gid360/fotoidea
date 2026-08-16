@@ -28,7 +28,7 @@ export default async function RootLayout({
   return (
     <html lang="ru" suppressHydrationWarning>
       <head>
-        {logoUrl && <link rel="icon" href={logoUrl} />}
+        <link rel="icon" href="/favicon.ico" />
       </head>
       <body className={inter.className}>
         <Providers>

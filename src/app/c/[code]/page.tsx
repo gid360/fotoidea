@@ -84,7 +84,7 @@ export default async function PublicCertificatePage({
         {/* Header Banner */}
         <div className="bg-[#3D352E] text-[#FAF8F5] p-6 text-center relative flex flex-col items-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/fotoidea-logo.png" alt="Fotoidea Logo" className="w-12 h-12 object-contain mb-[25px] brightness-200" />
+          <img src="/fotoidea-logo.png" alt="Fotoidea Logo" className="w-16 h-16 object-contain mb-[25px] brightness-200" />
           <div className="text-amber-300 font-serif italic text-2xl mb-1">Fotoidea.kz</div>
           <h1 className="text-xl font-bold tracking-widest uppercase">ПОДАРОЧНЫЙ СЕРТИФИКАТ</h1>
           <p className="text-xs text-amber-200/80 tracking-wider mt-0.5">НА ПРОФЕССИОНАЛЬНУЮ ФОТОСЕССИЮ</p>

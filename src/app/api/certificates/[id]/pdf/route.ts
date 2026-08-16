@@ -200,10 +200,11 @@ export async function GET(
       }
     }
 
-    // 2. Top Header Section
-    const logoTop = height - 16;
-    let logoW = 28;
-    let logoH = 28;
+    // 2. Top Header Section (Logo increased by +40% from 28 to 40pt)
+    const logoTop = height - 14;
+    const maxLogoSize = 40;
+    let logoW = maxLogoSize;
+    let logoH = maxLogoSize;
     const logoY = logoTop - logoH; // bottom of logo
 
     // Logo image with preserved aspect ratio
@@ -213,10 +214,10 @@ export async function GET(
         const logoBytes = fs.readFileSync(logoPath);
         const logoImage = await pdfDoc.embedPng(logoBytes);
         const aspect = logoImage.width / logoImage.height;
-        logoW = 28;
+        logoW = maxLogoSize;
         logoH = logoW / (aspect || 1);
-        if (logoH > 28) {
-          logoH = 28;
+        if (logoH > maxLogoSize) {
+          logoH = maxLogoSize;
           logoW = logoH * aspect;
         }
         page.drawImage(logoImage, {
