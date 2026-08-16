@@ -82,7 +82,7 @@ export function TransactionsClient() {
   function openModal(type: "INCOME" | "EXPENSE") {
     setTxType(type);
     setTxCategory(type === "INCOME" ? "OTHER_INCOME" : "TRAINER_SALARY");
-    setTxPaymentMethod("CASH");
+    setTxPaymentMethod(type === "INCOME" ? "KASPI" : "CASH");
     setTxAmount("");
     setTxCashAmount("");
     setTxNonCashAmount("");

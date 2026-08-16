@@ -88,6 +88,7 @@ export function ShiftDetail({ shift, onBack }: { shift: Shift; onBack: () => voi
       ...f,
       type,
       category: type === "INCOME" ? "OTHER_INCOME" : "OTHER_EXPENSE",
+      paymentMethod: type === "INCOME" ? "KASPI" : "CASH",
     }));
   }
 
