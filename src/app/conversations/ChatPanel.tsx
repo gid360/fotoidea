@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Send, Search, RefreshCw, Paperclip, Smile, Check, CheckCheck,
   UserPlus, FileText, X, ArrowLeft, Phone, Info, Image as ImageIcon, Play, Pause, Volume2, Video, Download,
-  Mic, Trash2, CornerUpRight, Share2, Pencil, User,
+  Mic, Trash2, CornerUpRight, Share2, Pencil, User, CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -675,7 +675,14 @@ export function ChatPanel({
             }}
           >
             <div className="flex items-center gap-1.5 flex-wrap">
-              <h2 className="font-bold text-xs sm:text-sm truncate text-slate-900">{clientDisplayName(client)}</h2>
+              <h2 className="font-bold text-xs sm:text-sm truncate text-slate-900 flex items-center gap-1.5">
+                <span className="truncate">{clientDisplayName(client)}</span>
+                {(client.dbClientId || (client.id && !client.id.includes("@"))) && (
+                  <span title="Клиент сохранён в базе данных" className="inline-flex items-center">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                  </span>
+                )}
+              </h2>
               {formatPhonePretty(client.phone) && (
                 client.dbClientId || (client.id && !client.id.includes("@")) ? (
                   <a
@@ -683,10 +690,10 @@ export function ChatPanel({
                     target="_blank"
                     rel="noreferrer"
                     onClick={(e) => e.stopPropagation()}
-                    className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 border border-slate-200 font-mono text-slate-700 transition-all flex items-center gap-1 cursor-pointer font-medium"
-                    title="Открыть карточку клиента в базе"
+                    className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full bg-emerald-50 hover:bg-emerald-100 hover:text-emerald-900 border border-emerald-200 font-mono text-emerald-700 transition-all flex items-center gap-1 cursor-pointer font-medium"
+                    title="Клиент сохранён в базе данных · Открыть карточку"
                   >
-                    <User className="h-3 w-3 text-slate-500 hover:text-indigo-600" />
+                    <CheckCircle2 className="h-3 w-3 text-emerald-600" />
                     {formatPhonePretty(client.phone)}
                   </a>
                 ) : (
@@ -696,7 +703,7 @@ export function ChatPanel({
                     rel="noreferrer"
                     onClick={(e) => e.stopPropagation()}
                     className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full bg-slate-100 hover:bg-slate-200 font-mono text-slate-600 transition-colors cursor-pointer"
-                    title="Поиск клиента в базе"
+                    title="Поиск клиента в базе (клиент не сохранён)"
                   >
                     {formatPhonePretty(client.phone)}
                   </a>

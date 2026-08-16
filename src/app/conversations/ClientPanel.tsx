@@ -270,7 +270,14 @@ export function ClientPanel({
               </div>
             ) : (
               <div className="flex items-center gap-1 group">
-                <h3 className="font-bold text-sm text-slate-900 truncate">{clientDisplayName(client)}</h3>
+                <h3 className="font-bold text-sm text-slate-900 truncate flex items-center gap-1.5">
+                  <span className="truncate">{clientDisplayName(client)}</span>
+                  {(client.dbClientId || (client.id && !client.id.includes("@"))) && (
+                    <span title="Клиент сохранён в базе данных" className="inline-flex items-center">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                    </span>
+                  )}
+                </h3>
                 <button
                   onClick={() => {
                     const currentName = client.name || (clientDisplayName(client) !== "Клиент" && !clientDisplayName(client).startsWith("+") && !clientDisplayName(client).startsWith("8 ") ? clientDisplayName(client) : "");
@@ -290,12 +297,12 @@ export function ClientPanel({
                 href={`/clients/${client.dbClientId || client.id}`}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1.5 text-indigo-600 hover:text-indigo-800 hover:underline font-mono text-xs mt-0.5 font-medium cursor-pointer"
-                title="Открыть карточку клиента в базе"
+                className="inline-flex items-center gap-1.5 text-emerald-700 hover:text-emerald-900 hover:underline font-mono text-xs mt-0.5 font-medium cursor-pointer"
+                title="Открыть карточку клиента в базе (клиент сохранён)"
               >
-                <Phone className="h-3 w-3 text-slate-400" />
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                 {formatPhonePretty(client.phone)}
-                <ExternalLink className="h-3 w-3 text-indigo-400" />
+                <ExternalLink className="h-3 w-3 text-emerald-500" />
               </a>
             ) : (
               <a
@@ -303,7 +310,7 @@ export function ClientPanel({
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-1.5 text-slate-500 hover:text-indigo-600 hover:underline font-mono text-xs mt-0.5 cursor-pointer"
-                title="Поиск клиента в базе"
+                title="Поиск клиента в базе (клиент не сохранён)"
               >
                 <Phone className="h-3 w-3 text-slate-400" />
                 {formatPhonePretty(client.phone)}

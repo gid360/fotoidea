@@ -3,7 +3,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Search, RefreshCw, Pin, MessageCircle, Filter, Plus, UserPlus, CheckCheck, X,
+  Search, RefreshCw, Pin, MessageCircle, Filter, Plus, UserPlus, CheckCheck, X, CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -401,8 +401,13 @@ export function ConversationsClient() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5 min-w-0">
-                          <span className="font-semibold text-xs truncate text-slate-900">
-                            {clientDisplayName(c.client)}
+                          <span className="font-semibold text-xs truncate text-slate-900 flex items-center gap-1">
+                            <span className="truncate">{clientDisplayName(c.client)}</span>
+                            {(c.client.dbClientId || (c.client.id && !c.client.id.includes("@"))) && (
+                              <span title="Клиент сохранён в базе данных" className="inline-flex items-center">
+                                <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
+                              </span>
+                            )}
                           </span>
                           <span
                             className="h-2 w-2 rounded-full shrink-0"
